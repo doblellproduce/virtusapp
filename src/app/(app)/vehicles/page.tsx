@@ -86,11 +86,13 @@ export default function VehiclesPage() {
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value, type } = e.target;
+        const processedValue = type === 'number' ? parseFloat(value) || 0 : value;
+
         if (id.startsWith('spec-')) {
             const specKey = id.split('-')[1] as keyof Vehicle['specs'];
-            setVehicleData(prev => ({ ...prev, specs: { ...prev.specs, [specKey]: type === 'number' ? parseInt(value, 10) : value }}));
+            setVehicleData(prev => ({ ...prev, specs: { ...prev.specs, [specKey]: processedValue }}));
         } else {
-            setVehicleData(prev => ({ ...prev, [id]: type === 'number' ? parseFloat(value) : value }));
+            setVehicleData(prev => ({ ...prev, [id]: processedValue }));
         }
     };
     
