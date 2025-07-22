@@ -47,4 +47,4 @@ const adminApp: App = getFirebaseAdminApp();
 
 export const adminAuth: Auth = getAuth(adminApp);
 export const adminDB: Firestore = getFirestore(adminApp);
-export const adminStorage
+export const adminStorage: Storage = getStorage(adminApp);
