@@ -1,7 +1,7 @@
 
 [
   {
-    "origin": ["https://TU_PROYECTO.vercel.app", "http://localhost:3000"],
+    "origin": ["https://virtusapp.vercel.app", "http://localhost:3000"],
     "method": [
       "GET",
       "POST",
