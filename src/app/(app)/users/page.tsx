@@ -18,15 +18,31 @@ import { collection, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firesto
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
-// In a real app, this would be an API call to a serverless function to create a user
-// to avoid exposing admin privileges to the client. For this prototype, we'll simulate.
+// This function now calls our secure backend Cloud Function
 async function inviteUser(email: string, displayName: string, role: UserRole) {
-    console.log(`Simulating invite for ${email} with role ${role}. In a real app, a backend function would:`);
-    console.log(`1. Create a Firebase Auth user.`);
-    console.log(`2. Create a 'users' document in Firestore with the UID, email, name, and role.`);
-    console.log(`3. Send a custom invitation email.`);
-    // This is a placeholder. In a real app, you'd use Firebase Functions.
-    return { success: true, message: `An invitation to set a password would be sent to ${email}.` };
+    // In a real app, you might want to get the region from an env variable
+    const functionUrl = 'https://us-central1-virtus-vehicle-vision.cloudfunctions.net/createNewUser';
+    try {
+        const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, displayName, role }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to create user.');
+        }
+
+        return { success: true, message: result.message };
+
+    } catch (error: any) {
+        console.error("Error inviting user:", error);
+        return { success: false, message: error.message || 'An unknown error occurred.' };
+    }
 }
 
 
@@ -116,12 +132,12 @@ export default function UsersPage() {
             });
             toast({ title: "User Updated", description: `Details for ${userData.name} have been updated.` });
         } else {
-            // This is a simulation. A real implementation requires a Cloud Function.
+            // Real implementation using the Cloud Function
             const result = await inviteUser(userData.email, userData.name, userData.role);
              if (result.success) {
-                toast({ title: "User Invited (Simulated)", description: result.message });
+                toast({ title: "User Invited Successfully", description: result.message });
             } else {
-                toast({ variant: 'destructive', title: "Error", description: result.message });
+                toast({ variant: 'destructive', title: "Error Inviting User", description: result.message });
             }
         }
         setIsSubmitting(false);
@@ -151,12 +167,11 @@ export default function UsersPage() {
         fetchUsers(); // Refresh data
     }
 
-    const handleResetPassword = async (user: UserProfile | null) => {
+    const handleResetPassword = async (user: UserProfile) => {
         if (!isCurrentUserAdmin) {
             toast({ variant: "destructive", title: "Permission Denied" });
             return;
         }
-
         if (!user?.email) {
             toast({ variant: "destructive", title: "Error", description: "User email is not available." });
             return;
@@ -178,7 +193,6 @@ export default function UsersPage() {
     
     const filteredUsers = users.filter(user => {
         const lowercasedTerm = searchTerm.toLowerCase();
-        // Safely check for name and email before calling .toLowerCase()
         const nameMatch = user.name?.toLowerCase().includes(lowercasedTerm);
         const emailMatch = user.email?.toLowerCase().includes(lowercasedTerm);
         return nameMatch || emailMatch;
@@ -305,23 +319,23 @@ export default function UsersPage() {
                      <DialogHeader>
                         <DialogTitle>{isEditing ? 'Edit User' : 'Invite New User'}</DialogTitle>
                         <DialogDescription>
-                            {isEditing ? 'Update the details for this user.' : 'Fill in the details to invite a new user. This is a simulation and requires a backend function for a real app.'}
+                            {isEditing ? 'Update the details for this user.' : 'Fill in the details to invite a new user. An invitation email will be sent.'}
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
                         <div className="grid gap-4 py-4">
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="name" className="text-right">Full Name</Label>
-                                <Input id="name" value={userData.name} onChange={handleInputChange} className="col-span-3" required disabled={isSubmitting}/>
+                                <Input id="name" name="name" value={userData.name} onChange={handleInputChange} className="col-span-3" required disabled={isSubmitting} autoComplete="name"/>
                             </div>
                              <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="email" className="text-right">Email</Label>
-                                <Input id="email" type="email" value={userData.email} onChange={handleInputChange} className="col-span-3" required disabled={isSubmitting || isEditing}/>
+                                <Input id="email" name="email" type="email" value={userData.email} onChange={handleInputChange} className="col-span-3" required disabled={isSubmitting || isEditing} autoComplete="email"/>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="role" className="text-right">Role</Label>
                                  <Select onValueChange={(value: UserRole) => handleSelectChange(value)} value={userData.role} required disabled={isSubmitting}>
-                                    <SelectTrigger className="col-span-3">
+                                    <SelectTrigger id="role" className="col-span-3">
                                         <SelectValue placeholder="Select a role" />
                                     </SelectTrigger>
                                     <SelectContent>
