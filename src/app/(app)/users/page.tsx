@@ -20,8 +20,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 // This function now calls our secure backend Cloud Function
 async function inviteUser(email: string, displayName: string, role: UserRole) {
-    // In a real app, you might want to get the region from an env variable
-    const functionUrl = 'https://us-central1-virtus-vehicle-vision.cloudfunctions.net/createNewUser';
+    // Correct and secure way to call the Cloud Function
+    const functionUrl = `https://us-central1-${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.cloudfunctions.net/createNewUser`;
+    
     try {
         const response = await fetch(functionUrl, {
             method: 'POST',
