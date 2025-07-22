@@ -3,24 +3,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Permite la lectura de cualquier archivo a cualquier usuario (incluso no autenticado)
-    // Útil para imágenes públicas de vehículos.
-    match /vehicles/{allPaths=**} {
-      allow read: if true;
-      // Solo usuarios autenticados pueden escribir/subir imágenes de vehículos
-      allow write: if request.auth != null;
-    }
-
-    // Para documentos de clientes, solo permite la escritura a usuarios autenticados.
-    // La lectura debe manejarse con URLs firmadas si se necesita privacidad.
-    match /documents/{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Regla por defecto: denegar todo lo que no coincida con las reglas anteriores.
+    // Allow public read access for all files (e.g., vehicle images).
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read: if true;
+      // Allow write access (uploads/deletes) only to authenticated staff users.
+      // This protects your storage from unauthorized uploads.
+      allow write: if request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
   }
 }
