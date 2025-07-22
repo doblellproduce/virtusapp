@@ -117,29 +117,20 @@ export default function VehiclesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("handleSubmit: Starting submission process...");
-        console.log("Client-side timestamp:", new Date().toISOString());
-
         if (!db || !storage || !user) {
-            console.error("handleSubmit ERROR: Firebase services not available or user not logged in.");
             toast({ variant: 'destructive', title: 'Error', description: 'Firebase is not initialized or user is not logged in.' });
             return;
         }
         
-        console.log("Current user UID:", user.uid);
         setIsSubmitting(true);
         let finalImageUrls: string[] = editingVehicle?.imageUrls || [];
 
         try {
             if (imageFiles && imageFiles.length > 0) {
-                console.log(`handleSubmit: Found ${imageFiles.length} files to upload.`);
                  const uploadPromises = Array.from(imageFiles).map(async (file) => {
                     const storageRef = ref(storage, `vehicles/${user.uid}/${Date.now()}_${file.name}`);
-                    console.log(`handleSubmit: Attempting to upload ${file.name} to path: ${storageRef.fullPath}`);
                     await uploadBytes(storageRef, file);
-                    const downloadUrl = await getDownloadURL(storageRef);
-                    console.log(`handleSubmit: Successfully uploaded ${file.name}, URL: ${downloadUrl}`);
-                    return downloadUrl;
+                    return await getDownloadURL(storageRef);
                 });
                 const newImageUrls = await Promise.all(uploadPromises);
                 finalImageUrls = isEditing ? [...(editingVehicle?.imageUrls || []), ...newImageUrls] : newImageUrls;
@@ -155,28 +146,20 @@ export default function VehiclesPage() {
                 dataAiHint: `${vehicleData.make} ${vehicleData.model}`,
             };
 
-            console.log("handleSubmit: Data object to be saved to Firestore:", dataToSave);
-
             if (isEditing && editingVehicle) {
-                console.log(`handleSubmit: Updating vehicle with ID: ${editingVehicle.id}`);
                 const vehicleRef = doc(db, 'vehicles', String(editingVehicle.id));
                 await updateDoc(vehicleRef, dataToSave as { [x: string]: any; });
                 toast({ title: 'Vehicle Updated', description: 'The vehicle has been successfully updated.' });
             } else {
-                console.log("handleSubmit: Adding new vehicle to Firestore.");
                 await addDoc(collection(db, 'vehicles'), dataToSave);
                 toast({ title: 'Vehicle Added', description: 'The new vehicle has been added to the catalog.' });
             }
-            console.log("handleSubmit: Firestore operation successful.");
             setOpen(false);
             fetchVehicles();
         } catch (error: any) {
             console.error("handleSubmit ERROR:", error);
-            console.error("Error Code:", error.code);
-            console.error("Error Message:", error.message);
             toast({ variant: 'destructive', title: 'Upload Failed', description: `Error: ${error.message}. Please check console.` });
         } finally {
-            console.log("handleSubmit: Submission process finished.");
             setIsSubmitting(false);
         }
     }
