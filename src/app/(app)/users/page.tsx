@@ -176,10 +176,9 @@ export default function UsersPage() {
     
     const filteredUsers = users.filter(user => {
         const lowercasedTerm = searchTerm.toLowerCase();
-        // ** THE FIX IS HERE **
         // Safely check for name and email before calling .toLowerCase()
-        const nameMatch = user.name?.toLowerCase().includes(lowercasedTerm) ?? false;
-        const emailMatch = user.email?.toLowerCase().includes(lowercasedTerm) ?? false;
+        const nameMatch = user.name?.toLowerCase().includes(lowercasedTerm);
+        const emailMatch = user.email?.toLowerCase().includes(lowercasedTerm);
         return nameMatch || emailMatch;
     });
 
@@ -305,7 +304,7 @@ export default function UsersPage() {
                         <DialogTitle>{isEditing ? 'Edit User' : 'Invite New User'}</DialogTitle>
                         <DialogDescription>
                             {isEditing ? 'Update the details for this user.' : 'Fill in the details to invite a new user. This is a simulation and requires a backend function for a real app.'}
-                        </d:DialogDescription>
+                        </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
                         <div className="grid gap-4 py-4">
@@ -345,4 +344,5 @@ export default function UsersPage() {
             </Dialog>
         </div>
     );
-}
+
+    
