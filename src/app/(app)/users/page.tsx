@@ -169,10 +169,13 @@ export default function UsersPage() {
         }
     }
     
-    const filteredUsers = users.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredUsers = users.filter(user => {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        // Safely check if name and email exist before calling toLowerCase
+        const nameMatch = user.name ? user.name.toLowerCase().includes(lowercasedTerm) : false;
+        const emailMatch = user.email ? user.email.toLowerCase().includes(lowercasedTerm) : false;
+        return nameMatch || emailMatch;
+    });
 
     React.useEffect(() => {
         if (!open) {
@@ -233,8 +236,8 @@ export default function UsersPage() {
                         <TableBody>
                             {filteredUsers.map((user) => (
                                 <TableRow key={user.id}>
-                                    <TableCell className="font-medium">{user.name}</TableCell>
-                                    <TableCell>{user.email}</TableCell>
+                                    <TableCell className="font-medium">{user.name || 'N/A'}</TableCell>
+                                    <TableCell>{user.email || 'N/A'}</TableCell>
                                     <TableCell>
                                         <Badge variant={user.role === 'Admin' ? 'destructive' : 'secondary'}>
                                             {user.role}
@@ -336,4 +339,5 @@ export default function UsersPage() {
             </Dialog>
         </div>
     );
-}
+
+    
