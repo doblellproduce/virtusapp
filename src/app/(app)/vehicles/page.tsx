@@ -122,20 +122,18 @@ export default function VehiclesPage() {
             return;
         }
         setIsSubmitting(true);
-        let uploadedImageUrls: string[] = vehicleData.imageUrls || [];
+        let finalImageUrls: string[] = editingVehicle?.imageUrls || [];
 
         try {
             if (imageFiles && imageFiles.length > 0) {
-                 console.log(`Uploading ${imageFiles.length} files...`);
                  const uploadPromises = Array.from(imageFiles).map(async (file) => {
                     const storageRef = ref(storage, `vehicles/${user.uid}/${Date.now()}_${file.name}`);
                     await uploadBytes(storageRef, file);
-                    const downloadUrl = await getDownloadURL(storageRef);
-                    console.log(`File ${file.name} uploaded to ${downloadUrl}`);
-                    return downloadUrl;
+                    return getDownloadURL(storageRef);
                 });
-                uploadedImageUrls = await Promise.all(uploadPromises);
-            } else if (!isEditing) {
+                const newImageUrls = await Promise.all(uploadPromises);
+                finalImageUrls = isEditing ? [...finalImageUrls, ...newImageUrls] : newImageUrls;
+            } else if (!isEditing && !imageFiles) {
                 toast({ variant: 'destructive', title: 'Image Required', description: 'Please upload at least one image for the new vehicle.' });
                 setIsSubmitting(false);
                 return;
@@ -143,7 +141,7 @@ export default function VehiclesPage() {
 
             const dataToSave: Omit<Vehicle, 'id'> = {
                 ...vehicleData,
-                imageUrls: uploadedImageUrls.length > 0 ? uploadedImageUrls : vehicleData.imageUrls,
+                imageUrls: finalImageUrls,
                 dataAiHint: `${vehicleData.make} ${vehicleData.model}`,
             };
 
