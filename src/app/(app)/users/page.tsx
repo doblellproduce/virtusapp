@@ -154,6 +154,7 @@ export default function UsersPage() {
             toast({ variant: "destructive", title: "Permission Denied" });
             return;
         }
+        // Use optional chaining just in case userEmail is not a string, though it should be.
         if (!userEmail) {
             toast({ variant: "destructive", title: "Error", description: "User email is not available." });
             return;
@@ -175,9 +176,10 @@ export default function UsersPage() {
     
     const filteredUsers = users.filter(user => {
         const lowercasedTerm = searchTerm.toLowerCase();
-        // Safe-guard against users with null/undefined name or email
-        const nameMatch = user.name?.toLowerCase().includes(lowercasedTerm);
-        const emailMatch = user.email?.toLowerCase().includes(lowercasedTerm);
+        // ** THE FIX IS HERE **
+        // Safely check for name and email before calling .toLowerCase()
+        const nameMatch = user.name?.toLowerCase().includes(lowercasedTerm) ?? false;
+        const emailMatch = user.email?.toLowerCase().includes(lowercasedTerm) ?? false;
         return nameMatch || emailMatch;
     });
 
@@ -343,5 +345,4 @@ export default function UsersPage() {
             </Dialog>
         </div>
     );
-
-    
+}
