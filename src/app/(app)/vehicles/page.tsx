@@ -126,10 +126,13 @@ export default function VehiclesPage() {
 
         try {
             if (imageFiles && imageFiles.length > 0) {
+                 console.log(`Uploading ${imageFiles.length} files...`);
                  const uploadPromises = Array.from(imageFiles).map(async (file) => {
                     const storageRef = ref(storage, `vehicles/${user.uid}/${Date.now()}_${file.name}`);
                     await uploadBytes(storageRef, file);
-                    return getDownloadURL(storageRef);
+                    const downloadUrl = await getDownloadURL(storageRef);
+                    console.log(`File ${file.name} uploaded to ${downloadUrl}`);
+                    return downloadUrl;
                 });
                 uploadedImageUrls = await Promise.all(uploadPromises);
             } else if (!isEditing) {
@@ -428,7 +431,3 @@ export default function VehiclesPage() {
         </div>
     );
 }
-
-    
-
-    
