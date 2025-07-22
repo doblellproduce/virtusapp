@@ -19,7 +19,10 @@ function getFirebaseAdminApp(): App {
   if (getApps().length > 0) {
     // This check is for Next.js dev mode which can cause multiple initializations.
     // In production, getApps() should be empty on first run.
-    return getApps()[0];
+    const existingApp = getApps().find(app => app.name === '[DEFAULT]');
+    if (existingApp) {
+        return existingApp;
+    }
   }
 
   // Check if all required environment variables are present.
@@ -44,4 +47,4 @@ const adminApp: App = getFirebaseAdminApp();
 
 export const adminAuth: Auth = getAuth(adminApp);
 export const adminDB: Firestore = getFirestore(adminApp);
-export const adminStorage: Storage = getStorage(adminApp);
+export const adminStorage
