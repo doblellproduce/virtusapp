@@ -1,0 +1,212 @@
+
+'use client';
+
+import * as React from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import {
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from '@/components/ui/sidebar';
+import {
+  LayoutDashboard,
+  Car,
+  Users,
+  Calendar,
+  FileUp,
+  CreditCard,
+  Wrench,
+  Sparkles,
+  LogOut,
+  Loader2,
+} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+
+const Logo = () => (
+  <svg
+    width="28"
+    height="28"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="text-sidebar-primary"
+  >
+    <path
+      d="M12 2L2 7V17L12 22L22 17V7L12 2Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 22V12"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M22 17L12 12"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M2 7L12 12"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M2 7L22 7"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const menuItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/reservations', label: 'Reservations', icon: Calendar },
+  { href: '/vehicles', label: 'Vehicles', icon: Car },
+  { href: '/users', label: 'Users', icon: Users, adminOnly: true },
+  { href: '/documents', label: 'Documents', icon: FileUp },
+  { href: '/invoices', label: 'Invoices', icon: CreditCard },
+  { href: '/expenses', label: 'Expenses', icon: Wrench },
+  { href: '/maintenance', label: 'Maintenance', icon: Wrench },
+  { href: '/calendar', label: 'Booking Calendar', icon: Calendar },
+  { href: '/smart-reply', label: 'Smart Reply', icon: Sparkles },
+];
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user, userProfile, role, loading, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('');
+  };
+
+  const filteredMenuItems = menuItems.filter(item => !item.adminOnly || role === 'Admin');
+
+  return (
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
+          <div className="flex items-center gap-2">
+            <Logo />
+            <span className="text-lg font-semibold text-sidebar-foreground">
+              Virtus Vehicle Vision
+            </span>
+          </div>
+        </SidebarHeader>
+        <SidebarContent className="p-2">
+          <SidebarMenu>
+            {filteredMenuItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex h-auto w-full items-center justify-start gap-2 p-2"
+              >
+                <Avatar className="h-8 w-8">
+                  {userProfile?.photoURL && <AvatarImage src={userProfile.photoURL} />}
+                  <AvatarFallback>{getInitials(userProfile?.name)}</AvatarFallback>
+                </Avatar>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-sidebar-foreground">
+                    {userProfile?.name || 'User'}
+                  </p>
+                  <p className="text-xs text-sidebar-foreground/70">
+                    {userProfile?.email}
+                  </p>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/40">
+        <div className="flex items-center gap-4 mb-6">
+            <SidebarTrigger className="md:hidden" />
+            <div className="w-full">
+                {/* Potentially add breadcrumbs or page title here */}
+            </div>
+        </div>
+        {children}
+      </main>
+    </SidebarProvider>
+  );
+}
