@@ -90,7 +90,8 @@ export default function VehiclesPage() {
 
         if (id.startsWith('spec-')) {
             const specKey = id.split('-')[1] as keyof Vehicle['specs'];
-            setVehicleData(prev => ({ ...prev, specs: { ...prev.specs, [specKey]: processedValue }}));
+            const specValue = id === 'spec-seats' ? parseInt(value, 10) || 0 : value;
+            setVehicleData(prev => ({ ...prev, specs: { ...prev.specs, [specKey]: specValue }}));
         } else {
             setVehicleData(prev => ({ ...prev, [id]: processedValue }));
         }
@@ -104,7 +105,6 @@ export default function VehiclesPage() {
         if (!storage || imageFiles.length === 0) return [];
         
         const uploadPromises = imageFiles.map(async (file) => {
-            // Use a more generic path that doesn't rely on a user ID
             const storageRef = ref(storage, `vehicles/${Date.now()}_${file.name}`);
             await uploadBytes(storageRef, file);
             return await getDownloadURL(storageRef);
@@ -137,7 +137,6 @@ export default function VehiclesPage() {
             const finalVehicleData = { 
                 ...vehicleData, 
                 imageUrls: uploadedImageUrls,
-                // A simple hint for AI image generation, can be improved
                 dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase()
             };
 
@@ -154,7 +153,6 @@ export default function VehiclesPage() {
             fetchData(); // Refresh data
         } catch (error) {
             console.error("Failed to save vehicle", error);
-             // Error toast is handled in uploadImages if it originates there
         } finally {
             setIsSubmitting(false);
         }

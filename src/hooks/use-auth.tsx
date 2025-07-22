@@ -54,9 +54,9 @@ const getClientFirebaseServices = (): FirebaseServices => {
       return { app: null, auth: null, db: null, storage: null };
     }
     
-    // Check if all necessary config keys are present
-    if (!firebaseConfig.projectId || !firebaseConfig.apiKey) {
-      console.error("Firebase config is missing or incomplete. Check your environment variables.");
+    // Check if all necessary config keys are present before initialization
+    if (!firebaseConfig.projectId || !firebaseConfig.apiKey || !firebaseConfig.authDomain) {
+      console.error("Firebase config is missing or incomplete. Check your environment variables (e.g., NEXT_PUBLIC_FIREBASE_PROJECT_ID).");
       return { app: null, auth: null, db: null, storage: null };
     }
 
