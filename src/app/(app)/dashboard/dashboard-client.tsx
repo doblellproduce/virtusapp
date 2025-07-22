@@ -40,19 +40,6 @@ const chartConfig = {
     label: "Revenue",
     color: "hsl(var(--primary))",
   },
-  tooltip: {
-      content: ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-          return (
-            <div className="p-2 bg-background border rounded-lg shadow-sm">
-              <p className="label font-semibold">{`${label}`}</p>
-              <p className="intro text-primary">{`Revenue: ${formatCurrency(payload[0].value)}`}</p>
-            </div>
-          );
-        }
-        return null;
-      },
-    },
 };
 
 const chartData = [
@@ -160,7 +147,20 @@ function RevenueChart() {
                             axisLine={false}
                             tickFormatter={(value) => `$${value / 1000}k`}
                         />
-                        <Tooltip content={chartConfig.tooltip.content} cursor={{fill: 'hsl(var(--accent))', radius: 4}} />
+                        <Tooltip 
+                            cursor={{fill: 'hsl(var(--accent))', radius: 4}} 
+                            content={({ active, payload, label }: any) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div className="p-2 bg-background border rounded-lg shadow-sm">
+                                      <p className="label font-semibold">{`${label}`}</p>
+                                      <p className="intro text-primary">{`Revenue: ${formatCurrency(payload[0].value)}`}</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                            }} 
+                        />
                         <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ChartContainer>
