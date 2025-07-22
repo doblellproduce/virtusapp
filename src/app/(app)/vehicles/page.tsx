@@ -77,7 +77,7 @@ export default function VehiclesPage() {
             setEditingVehicle(vehicle);
             const { id, dataAiHint, ...editableData } = vehicle;
             setVehicleData(editableData);
-            setImagePreviews(editableData.imageUrls);
+            setImagePreviews(editableData.imageUrls || []);
         } else {
             setEditingVehicle(null);
             setVehicleData(emptyVehicle);
@@ -104,10 +104,13 @@ export default function VehiclesPage() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (files) {
+        if (files && files.length > 0) {
             setImageFiles(files);
             const previews = Array.from(files).map(file => URL.createObjectURL(file));
             setImagePreviews(previews);
+        } else {
+            setImageFiles(null);
+            setImagePreviews(isEditing ? vehicleData.imageUrls : []);
         }
     }
 
@@ -133,8 +136,12 @@ export default function VehiclesPage() {
                     return await getDownloadURL(storageRef);
                 });
                 const newImageUrls = await Promise.all(uploadPromises);
-                finalImageUrls = isEditing ? [...(editingVehicle?.imageUrls || []), ...newImageUrls] : newImageUrls;
-            } else if (!isEditing && finalImageUrls.length === 0) {
+                // When editing, you might want to add to existing images, not replace.
+                // For this form, we will replace them.
+                finalImageUrls = newImageUrls;
+            }
+
+            if (finalImageUrls.length === 0) {
                 toast({ variant: 'destructive', title: 'Image Required', description: 'Please upload at least one image for the new vehicle.' });
                 setIsSubmitting(false);
                 return;
@@ -182,6 +189,7 @@ export default function VehiclesPage() {
             setVehicleData(emptyVehicle);
             setImageFiles(null);
             setImagePreviews([]);
+            setIsSubmitting(false);
         }
     }, [open]);
     

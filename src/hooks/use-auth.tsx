@@ -49,9 +49,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper function to initialize Firebase on the client-side
 const getClientFirebaseServices = (): FirebaseServices => {
-    if (typeof window === "undefined" || !firebaseConfig.projectId) {
+    if (typeof window === "undefined") {
       return { app: null, auth: null, db: null, storage: null };
     }
+    
+    // Check if all necessary config keys are present
+    if (!firebaseConfig.projectId || !firebaseConfig.apiKey) {
+      console.error("Firebase config is missing or incomplete. Check your environment variables.");
+      return { app: null, auth: null, db: null, storage: null };
+    }
+
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     return {
         app,
