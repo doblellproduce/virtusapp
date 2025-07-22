@@ -151,21 +151,21 @@ export default function UsersPage() {
         fetchUsers(); // Refresh data
     }
 
-    const handleResetPassword = async (userEmail: string) => {
+    const handleResetPassword = async (user: UserProfile | null) => {
         if (!isCurrentUserAdmin) {
             toast({ variant: "destructive", title: "Permission Denied" });
             return;
         }
-        // Use optional chaining just in case userEmail is not a string, though it should be.
-        if (!userEmail) {
+
+        if (!user?.email) {
             toast({ variant: "destructive", title: "Error", description: "User email is not available." });
             return;
         }
         try {
-            await sendPasswordReset(userEmail);
+            await sendPasswordReset(user.email);
             toast({
                 title: "Password Reset Sent",
-                description: `A password reset link has been sent to ${userEmail}.`
+                description: `A password reset link has been sent to ${user.email}.`
             });
         } catch (error: any) {
             toast({
@@ -261,7 +261,7 @@ export default function UsersPage() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 <DropdownMenuItem onClick={() => handleOpenDialog(user)}>Edit Details</DropdownMenuItem>
-                                                 <DropdownMenuItem onClick={() => handleResetPassword(user.email)}>
+                                                 <DropdownMenuItem onClick={() => handleResetPassword(user)}>
                                                     <KeyRound className="mr-2 h-4 w-4" />
                                                     Reset Password
                                                 </DropdownMenuItem>
