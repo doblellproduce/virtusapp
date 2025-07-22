@@ -17,6 +17,8 @@ const serviceAccount = {
 function getFirebaseAdminApp(): App {
   // If an app is already initialized, return it.
   if (getApps().length > 0) {
+    // This check is for Next.js dev mode which can cause multiple initializations.
+    // In production, getApps() should be empty on first run.
     return getApps()[0];
   }
 
