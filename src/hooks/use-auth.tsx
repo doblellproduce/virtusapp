@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!firebaseServices.auth || !firebaseServices.db) {
+        console.error("Firebase services not available. Auth or DB is null.");
         setLoading(false); // Not in a browser environment or firebase is not configured.
         return;
     }
