@@ -1,11 +1,6 @@
+
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "next.config.js",
-      "use": "@vercel/next"
-    }
-  ],
   "routes": [
     {
       "src": "/_next/static/(?:[^/]+/pages|pages|chunks|runtime|css|image|media|sounds|videos)/.+",
