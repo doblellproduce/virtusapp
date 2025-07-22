@@ -1,14 +1,26 @@
+
 rules_version = '2';
 
-// Set rules to default to denying access
 service firebase.storage {
   match /b/{bucket}/o {
-    // Match any file in the bucket
-    match /{allPaths=**} {
-      // Allow reads to any user
-      allow read;
-      // Allow writes only if the user is authenticated
+    
+    // Permite la lectura de cualquier archivo a cualquier usuario (incluso no autenticado)
+    // Útil para imágenes públicas de vehículos.
+    match /vehicles/{allPaths=**} {
+      allow read: if true;
+      // Solo usuarios autenticados pueden escribir/subir imágenes de vehículos
       allow write: if request.auth != null;
+    }
+
+    // Para documentos de clientes, solo permite la escritura a usuarios autenticados.
+    // La lectura debe manejarse con URLs firmadas si se necesita privacidad.
+    match /documents/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Regla por defecto: denegar todo lo que no coincida con las reglas anteriores.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
