@@ -29,10 +29,10 @@ const firebaseConfig = {
 
 // Define the shape of the context
 interface FirebaseServices {
-  app: FirebaseApp;
-  auth: Auth;
-  db: Firestore;
-  storage: FirebaseStorage;
+  app: FirebaseApp | null;
+  auth: Auth | null;
+  db: Firestore | null;
+  storage: FirebaseStorage | null;
 }
 
 interface AuthContextType extends FirebaseServices {
@@ -49,6 +49,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper function to initialize Firebase on the client-side
 const getClientFirebaseServices = (): FirebaseServices => {
+    if (typeof window === "undefined" || !firebaseConfig.projectId) {
+      return { app: null, auth: null, db: null, storage: null };
+    }
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     return {
         app,
@@ -68,6 +71,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const firebaseServices = useMemo(getClientFirebaseServices, []);
 
   useEffect(() => {
+    if (!firebaseServices.auth || !firebaseServices.db) {
+        setLoading(false); // Not in a browser environment or firebase is not configured.
+        return;
+    }
+
     const { auth, db } = firebaseServices;
     
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
@@ -104,14 +112,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [firebaseServices]);
 
   const handleLogin = (email: string, pass: string) => {
+    if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
     return signInWithEmailAndPassword(firebaseServices.auth, email, pass);
   };
 
   const handleLogout = () => {
+    if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
     return signOut(firebaseServices.auth);
   };
 
   const handlePasswordReset = (email: string) => {
+    if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
     return sendPasswordResetEmail(firebaseServices.auth, email);
   };
 
