@@ -54,8 +54,19 @@ const getClientFirebaseServices = (): FirebaseServices => {
       return { app: null, auth: null, db: null, storage: null };
     }
     
-    // Use the standard pattern which is robust for Next.js environments.
-    // The check for projectId is implicitly handled by Firebase itself upon initialization.
+    // Ensure all required environment variables are present before initializing
+    if (
+        !firebaseConfig.apiKey ||
+        !firebaseConfig.authDomain ||
+        !firebaseConfig.projectId ||
+        !firebaseConfig.storageBucket ||
+        !firebaseConfig.messagingSenderId ||
+        !firebaseConfig.appId
+    ) {
+        console.error("Firebase config is incomplete. Check your .env.local or Vercel environment variables.");
+        return { app: null, auth: null, db: null, storage: null };
+    }
+    
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     
     return {
@@ -77,8 +88,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!firebaseServices.auth || !firebaseServices.db) {
+        // This log will now appear if the config was incomplete.
         console.error("Firebase services not available. Auth or DB is null.");
-        setLoading(false); // Not in a browser environment or firebase is not configured.
+        setLoading(false); 
         return;
     }
 
