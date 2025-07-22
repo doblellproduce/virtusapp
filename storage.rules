@@ -1,14 +1,16 @@
 rules_version = '2';
 
-// Rules for Firebase Storage
 service firebase.storage {
   match /b/{bucket}/o {
-    // Match any file in the storage bucket
+    // Allow public read access for all files, so anyone can see vehicle images.
     match /{allPaths=**} {
-      // Allow reads from anyone (e.g., to display images)
       allow read;
-      // Allow writes (uploads, deletes) only if the user is authenticated
-      allow write: if request.auth != null;
+    }
+
+    // Allow write access (uploads) only for authenticated users inside their own folder.
+    // This matches the path structure used in the VehiclesPage: `vehicles/{user.uid}/{fileName}`.
+    match /vehicles/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
