@@ -54,7 +54,9 @@ export default function UsersPage() {
         setLoading(true);
         try {
             const usersSnapshot = await getDocs(collection(db, 'users'));
-            const usersData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+            const usersData = usersSnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as UserProfile))
+                .filter(user => user.name && user.email); // Ensure essential data exists
             setUsers(usersData);
         } catch (error) {
             console.error("Error fetching users: ", error);
@@ -344,5 +346,4 @@ export default function UsersPage() {
             </Dialog>
         </div>
     );
-
-    
+}
