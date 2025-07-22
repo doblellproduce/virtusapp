@@ -20,8 +20,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 // This function now calls our secure backend Cloud Function
 async function inviteUser(email: string, displayName: string, role: UserRole) {
-    // Correct and secure way to call the Cloud Function
-    const functionUrl = `https://us-central1-${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.cloudfunctions.net/createNewUser`;
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (!projectId) {
+        return { success: false, message: 'Firebase Project ID is not configured.' };
+    }
+    const functionUrl = `https://us-central1-${projectId}.cloudfunctions.net/createNewUser`;
     
     try {
         const response = await fetch(functionUrl, {
@@ -73,7 +76,7 @@ export default function UsersPage() {
             const usersSnapshot = await getDocs(collection(db, 'users'));
             const usersData = usersSnapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as UserProfile))
-                .filter(user => user.name && user.email); // Ensure essential data exists
+                .filter(user => user.name && user.email);
             setUsers(usersData);
         } catch (error) {
             console.error("Error fetching users: ", error);
@@ -133,7 +136,6 @@ export default function UsersPage() {
             });
             toast({ title: "User Updated", description: `Details for ${userData.name} have been updated.` });
         } else {
-            // Real implementation using the Cloud Function
             const result = await inviteUser(userData.email, userData.name, userData.role);
              if (result.success) {
                 toast({ title: "User Invited Successfully", description: result.message });
@@ -143,7 +145,7 @@ export default function UsersPage() {
         }
         setIsSubmitting(false);
         setOpen(false);
-        fetchUsers(); // Refresh data
+        fetchUsers();
     }
     
     const handleDelete = async (userId: string) => {
@@ -161,11 +163,14 @@ export default function UsersPage() {
         }
         const userToDelete = users.find(u => u.id === userId);
         
-        // This is a simulation. A real implementation requires a Cloud Function to delete both Firestore doc and Auth user.
+        // This is a simulation for now. A real implementation requires a Cloud Function.
+        console.log(`Simulating deletion of user ${userToDelete?.name}...`);
+        // In a real app, you'd call a Cloud Function here to delete the Auth user and the Firestore doc.
+        // For example: await deleteUserFunction({ userId });
         await deleteDoc(doc(db, "users", userId));
         
-        toast({ title: "User Deleted (Simulated)", description: `The user ${userToDelete?.name} has been deleted from Firestore. The Auth user would also be deleted.` });
-        fetchUsers(); // Refresh data
+        toast({ title: "User Deleted (Firestore Only)", description: `The user ${userToDelete?.name} has been deleted from Firestore. Auth record still exists.` });
+        fetchUsers();
     }
 
     const handleResetPassword = async (user: UserProfile) => {
