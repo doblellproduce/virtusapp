@@ -299,7 +299,7 @@ export default function UsersPage() {
                         <DialogTitle>{isEditing ? 'Edit User' : 'Invite New User'}</DialogTitle>
                         <DialogDescription>
                             {isEditing ? 'Update the details for this user.' : 'Fill in the details to invite a new user. This is a simulation and requires a backend function for a real app.'}
-                        </DialogDescription>
+                        </d:DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
                         <div className="grid gap-4 py-4">
@@ -339,5 +339,4 @@ export default function UsersPage() {
             </Dialog>
         </div>
     );
-
-    
+}
