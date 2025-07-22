@@ -1,0 +1,35 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "maintenanceLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pickupDate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+     {
+      "collectionGroup": "reservaras",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pickupDate",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
