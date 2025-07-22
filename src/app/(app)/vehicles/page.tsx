@@ -141,7 +141,7 @@ export default function VehiclesPage() {
                 finalImageUrls = newImageUrls;
             }
 
-            if (finalImageUrls.length === 0) {
+            if (finalImageUrls.length === 0 && !isEditing) {
                 toast({ variant: 'destructive', title: 'Image Required', description: 'Please upload at least one image for the new vehicle.' });
                 setIsSubmitting(false);
                 return;
