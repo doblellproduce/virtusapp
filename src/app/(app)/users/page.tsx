@@ -30,7 +30,7 @@ async function inviteUser(email: string, displayName: string, role: UserRole) {
 }
 
 
-type NewUser = Omit<UserProfile, 'id'>;
+type NewUser = Omit<UserProfile, 'id' | 'photoURL'>;
 
 const emptyUser: NewUser = {
     name: '',
