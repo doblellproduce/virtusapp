@@ -1,40 +1,45 @@
 
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getStorage, Storage } from 'firebase-admin/storage';
 
-// Explicitly check for environment variables at the start.
-const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-// The replace call is crucial for converting the escaped newlines from the environment variable.
-const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-
+// Define the service account credentials from environment variables.
 const serviceAccount = {
-  projectId,
-  clientEmail,
-  privateKey,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  // The replace call is crucial for converting the escaped newlines from the environment variable.
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
-let adminApp: App;
+// A function to get the initialized Firebase Admin app.
+// This implements the Singleton pattern to ensure the app is initialized only once.
+function getFirebaseAdminApp(): App {
+  // If an app is already initialized, return it.
+  if (getApps().length > 0) {
+    return getApps()[0];
+  }
 
-// Singleton pattern to ensure Firebase Admin is initialized only once.
-if (!getApps().length) {
-  if (!projectId || !clientEmail || !privateKey) {
+  // Check if all required environment variables are present.
+  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
     throw new Error(
       "Firebase Admin SDK is not configured. Please check your environment variables: " +
       "NEXT_PUBLIC_FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are required."
     );
   }
-  adminApp = initializeApp({
+
+  // Initialize the Firebase Admin app.
+  return initializeApp({
     credential: cert(serviceAccount),
-    storageBucket: `${projectId}.appspot.com`,
+    storageBucket: `${serviceAccount.projectId}.appspot.com`,
   });
-} else {
-  adminApp = getApps()[0];
 }
 
-// Export the initialized services
-export const adminAuth = getAuth(adminApp);
-export const adminDB = getFirestore(adminApp);
-export const adminStorage = getStorage(adminApp);
+// Export the admin app and its services.
+// By calling the function here, we ensure that any module importing these
+// will get a properly initialized service.
+const adminApp: App = getFirebaseAdminApp();
+
+export const adminAuth: Auth = getAuth(adminApp);
+export const adminDB: Firestore = getFirestore(adminApp);
+export const adminStorage: Storage = getStorage(adminApp);
