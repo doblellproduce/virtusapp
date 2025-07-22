@@ -149,17 +149,7 @@ function RevenueChart() {
                         />
                         <Tooltip 
                             cursor={{fill: 'hsl(var(--accent))', radius: 4}} 
-                            content={({ active, payload, label }: any) => {
-                                if (active && payload && payload.length) {
-                                  return (
-                                    <div className="p-2 bg-background border rounded-lg shadow-sm">
-                                      <p className="label font-semibold">{`${label}`}</p>
-                                      <p className="intro text-primary">{`Revenue: ${formatCurrency(payload[0].value)}`}</p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                            }} 
+                            content={<ChartTooltipContent formatter={(value) => formatCurrency(value as number)} />}
                         />
                         <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
