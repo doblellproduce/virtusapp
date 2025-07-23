@@ -5,6 +5,7 @@ import * as React from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,7 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { login, sendPasswordReset } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -45,9 +47,9 @@ export default function LoginForm() {
     setError(null);
     setIsSubmitting(true);
     try {
-      // The form's only job is to attempt the login.
-      // The redirection will be handled by the page component watching the auth state.
       await login(data.email, data.password);
+      // SUCCESS: Explicitly redirect to dashboard AFTER login is successful.
+      router.push('/dashboard');
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";
        switch (error.code) {
@@ -65,7 +67,7 @@ export default function LoginForm() {
        }
        setError(errorMessage);
     } finally {
-      // This will always run, ensuring the loading state is reset.
+      // This will always run, ensuring the loading state is reset on error.
       setIsSubmitting(false);
     }
   };
