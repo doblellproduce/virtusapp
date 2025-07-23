@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const firebaseServices = getClientFirebaseServices();
 
   useEffect(() => {
-    if (!firebaseServices.auth) {
+    if (!firebaseServices.auth || !firebaseServices.db) {
       setLoading(false);
       return;
     }
@@ -89,46 +89,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token }),
         });
+        
+        // Now fetch profile
+        const userDocRef = doc(firebaseServices.db, 'users', authUser.uid);
+        const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+                setUserProfile(profileData);
+                setRole(profileData.role);
+            } else {
+                setUserProfile(null);
+                setRole(null);
+            }
+            setLoading(false); // <--- Set loading to false AFTER profile is checked
+        }, (error) => {
+            console.error("Error in user profile snapshot listener:", error);
+            setUserProfile(null);
+            setRole(null);
+            setLoading(false);
+        });
+        return () => unsubscribeProfile();
+
       } else {
         setUser(null);
         setUserProfile(null);
         setRole(null);
         // Clear server-side cookie on logout
         await fetch('/api/auth', { method: 'DELETE' });
-        setLoading(false);
+        setLoading(false); // <--- Set loading to false if no user
       }
     });
 
     return () => unsubscribeAuth();
-  }, [firebaseServices.auth]);
-
-  useEffect(() => {
-    if (!firebaseServices.db || !user) {
-        // If there's no user, we are done loading.
-        if (!user) setLoading(false);
-        return;
-    }
-
-    const userDocRef = doc(firebaseServices.db, 'users', user.uid);
-    const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-            setUserProfile(profileData);
-            setRole(profileData.role);
-        } else {
-            setUserProfile(null);
-            setRole(null);
-        }
-        setLoading(false);
-    }, (error) => {
-        console.error("Error in user profile snapshot listener:", error);
-        setUserProfile(null);
-        setRole(null);
-        setLoading(false);
-    });
-
-    return () => unsubscribeProfile();
-  }, [user, firebaseServices.db]);
+  }, [firebaseServices.auth, firebaseServices.db]);
 
 
   const handleLogin = (email: string, pass: string) => {
