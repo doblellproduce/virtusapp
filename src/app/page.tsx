@@ -18,7 +18,7 @@ const Logo = () => (
     </svg>
 );
 
-function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+function VehicleCard({ vehicle, priority }: { vehicle: Vehicle; priority?: boolean }) {
   const imageUrl = vehicle.imageUrls && vehicle.imageUrls.length > 0 ? vehicle.imageUrls[0] : 'https://placehold.co/600x400.png';
   
   return (
@@ -31,6 +31,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
                 layout="fill"
                 className="object-cover"
                 data-ai-hint={vehicle.dataAiHint || `${vehicle.make} ${vehicle.model}`}
+                priority={priority}
             />
         </div>
       </CardHeader>
@@ -110,8 +111,8 @@ export default function RootPage() {
                 </div>
             ) : vehicles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {vehicles.map(vehicle => (
-                        <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                    {vehicles.map((vehicle, index) => (
+                        <VehicleCard key={vehicle.id} vehicle={vehicle} priority={index === 0} />
                     ))}
                 </div>
             ) : (

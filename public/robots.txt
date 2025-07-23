@@ -1,0 +1,19 @@
+# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+#
+# Allow all crawlers access to the public-facing pages.
+User-agent: *
+Allow: /
+Allow: /vehiculo/
+
+# Disallow crawlers from accessing the admin panel and contract pages.
+Disallow: /login
+Disallow: /dashboard
+Disallow: /calendar
+Disallow: /documents
+Disallow: /expenses
+Disallow: /invoices
+Disallow: /maintenance
+Disallow: /reservations
+Disallow: /smart-reply
+Disallow: /users
+Disallow: /contrato
