@@ -93,7 +93,7 @@ function RecentReservations({ reservations }: { reservations: Reservation[] }) {
                         {reservations.map(res => (
                             <TableRow key={res.id}>
                                 <TableCell>
-                                    <div className="font-medium">{res.customer}</div>
+                                    <div className="font-medium">{res.customerName}</div>
                                     <div className="text-sm text-muted-foreground">{res.pickupDate}</div>
                                 </TableCell>
                                 <TableCell>{res.vehicle}</TableCell>

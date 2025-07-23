@@ -203,7 +203,7 @@ export default function CalendarPage() {
                                 <div className={cn("h-2.5 w-2.5 rounded-full", carColors[res.vehicleId as any] || 'bg-gray-500')}></div>
                                 <div className="flex-auto">
                                     <p className="font-semibold">{res.vehicle}</p>
-                                    <p className="text-muted-foreground text-sm">{res.customer}</p>
+                                    <p className="text-muted-foreground text-sm">{res.customerName}</p>
                                 </div>
                                  <Badge variant={res.status === 'Active' ? 'default' : 'secondary'} className={res.status === 'Active' ? 'bg-green-600' : ''}>{res.status}</Badge>
                             </li>
