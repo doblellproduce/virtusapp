@@ -3,44 +3,80 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Vehicles are public-readable for the landing page fleet view
-    match /vehicles/{vehicleId} {
-      allow read: if true;
-      allow write: if request.auth != null; // Only authenticated users can modify vehicles
-    }
-    
-    // App-specific collections require authentication for any access
-    match /reservations/{reservationId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /users/{userId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /documents/{documentId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /contracts/{contractId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /invoices/{invoiceId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /expenses/{expenseId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /maintenanceLogs/{logId} {
-      allow read, write: if request.auth != null;
+
+    // Helper function to get the user's role from their profile in the 'users' collection
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
 
+    // Helper function to check if the user is an Admin
+    function isAdmin() {
+      return request.auth != null && getUserRole(request.auth.uid) == 'Admin';
+    }
+
+    // Helper function to check if the user is a Supervisor or Admin
+    function isSupervisorOrAdmin() {
+      return request.auth != null && (getUserRole(request.auth.uid) == 'Supervisor' || isAdmin());
+    }
+
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Only Admins can create, update, or delete users.
+      allow create, update, delete: if isAdmin();
+      // Any authenticated user can read user profiles (to see names, etc.)
+      allow get, list: if isAuthenticated();
+    }
+
+    // Vehicles Collection
+    match /vehicles/{vehicleId} {
+      // Only Admins and Supervisors can create, update, or delete vehicles.
+      allow create, update, delete: if isSupervisorOrAdmin();
+      // Any authenticated user can view the vehicle list.
+      // Unauthenticated users can also read for the public homepage.
+      allow get, list: if true;
+    }
+    
+    // Reservations, Invoices, Documents, Contracts - Core operational data
+    match /reservations/{resId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /invoices/{invId} {
+      allow read, write: if isAuthenticated();
+    }
+     match /documents/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+     match /contracts/{conId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Expenses Collection
+    match /expenses/{expenseId} {
+      // Any authenticated user can create an expense record.
+      allow create: if isAuthenticated();
+      // Only Admins and Supervisors can update or delete expenses.
+      allow update, delete: if isSupervisorOrAdmin();
+      // All authenticated users can read expenses.
+      allow get, list: if isAuthenticated();
+    }
+    
+    // Maintenance Logs
+    match /maintenanceLogs/{logId} {
+        // Admins and Supervisors can manage all maintenance logs. Secretaries can create them.
+        allow create, read, update, delete: if isAuthenticated();
+    }
+
+    // Activity Logs - Read-only for Supervisors/Admins
     match /activityLogs/{logId} {
-      allow read, write: if request.auth != null;
+      // Writing logs should ideally be done via a secure backend/Cloud Function, not the client.
+      allow write: if false;
+      // Only Admins and Supervisors can read the activity logs.
+      allow read: if isSupervisorOrAdmin();
     }
   }
 }
