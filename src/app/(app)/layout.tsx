@@ -39,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import type { UserRole } from '@/lib/types';
 
 const Logo = () => (
   <svg
@@ -88,17 +89,17 @@ const Logo = () => (
 );
 
 const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/reservations', label: 'Reservations', icon: Calendar },
-  { href: '/vehicles', label: 'Vehicles', icon: Car },
-  { href: '/users', label: 'Users', icon: Users, adminOnly: true },
-  { href: '/documents', label: 'Documents', icon: FileUp },
-  { href: '/invoices', label: 'Invoices', icon: CreditCard },
-  { href: '/expenses', label: 'Expenses', icon: Wrench },
-  { href: '/maintenance', label: 'Maintenance', icon: Wrench },
-  { href: '/calendar', label: 'Booking Calendar', icon: Calendar },
-  { href: '/smart-reply', label: 'Smart Reply', icon: Sparkles },
-  { href: '/logs', label: 'Activity Log', icon: History, adminOnly: true },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/reservations', label: 'Reservations', icon: Calendar, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/users', label: 'Users', icon: Users, roles: ['Admin'] },
+  { href: '/documents', label: 'Documents', icon: FileUp, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/invoices', label: 'Invoices', icon: CreditCard, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/expenses', label: 'Expenses', icon: Wrench, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/maintenance', label: 'Maintenance', icon: Wrench, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/calendar', label: 'Booking Calendar', icon: Calendar, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/smart-reply', label: 'Smart Reply', icon: Sparkles, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/logs', label: 'Activity Log', icon: History, roles: ['Admin', 'Supervisor'] },
 ];
 
 export default function AdminLayout({
@@ -116,7 +117,7 @@ export default function AdminLayout({
     }
   }, [user, loading, router]);
 
-  if (loading || !user) {
+  if (loading || !user || !role) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -137,7 +138,7 @@ export default function AdminLayout({
       .join('');
   };
 
-  const filteredMenuItems = menuItems.filter(item => !item.adminOnly || role === 'Admin');
+  const filteredMenuItems = menuItems.filter(item => item.roles.includes(role));
 
   return (
     <SidebarProvider>

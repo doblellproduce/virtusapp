@@ -35,7 +35,7 @@ const emptyExpense: NewExpense = {
 
 export default function ExpensesPage() {
     const { toast } = useToast();
-    const { db } = useAuth();
+    const { db, role } = useAuth();
     const [expenses, setExpenses] = React.useState<Expense[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [open, setOpen] = React.useState(false);
@@ -44,6 +44,7 @@ export default function ExpensesPage() {
     const [expenseData, setExpenseData] = React.useState<NewExpense>(emptyExpense);
 
     const isEditing = editingExpense !== null;
+    const canEdit = role === 'Admin' || role === 'Supervisor';
 
     const fetchExpenses = React.useCallback(() => {
         if (!db) return;
@@ -68,6 +69,10 @@ export default function ExpensesPage() {
 
     const handleOpenDialog = (expense: Expense | null = null) => {
         if (expense) {
+            if (!canEdit) {
+                toast({ variant: 'destructive', title: 'Permission Denied', description: 'You do not have permission to edit expenses.' });
+                return;
+            }
             setEditingExpense(expense);
             setExpenseData(expense);
         } else {
@@ -211,7 +216,7 @@ export default function ExpensesPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleOpenDialog(expense)}>
+                                                <DropdownMenuItem onClick={() => handleOpenDialog(expense)} disabled={!canEdit}>
                                                     <Edit className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
                                                 {expense.status !== 'Paid' && (

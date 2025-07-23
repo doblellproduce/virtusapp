@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -27,7 +28,7 @@ const emptyVehicle: NewVehicle = {
 };
 
 export default function VehiclesPage() {
-    const { db, storage } = useAuth();
+    const { db, storage, role } = useAuth();
     const { toast } = useToast();
 
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
@@ -40,6 +41,7 @@ export default function VehiclesPage() {
     const [imagePreviews, setImagePreviews] = React.useState<string[]>([]);
     
     const isEditing = editingVehicle !== null;
+    const canManageVehicles = role === 'Admin' || role === 'Supervisor';
 
     const fetchData = React.useCallback(async () => {
         if (!db) return;
@@ -187,7 +189,7 @@ export default function VehiclesPage() {
                         <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
-                    <Button onClick={() => handleOpenDialog()}>
+                    <Button onClick={() => handleOpenDialog()} disabled={!canManageVehicles}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Vehicle
                     </Button>
@@ -230,7 +232,7 @@ export default function VehiclesPage() {
                                     <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                <Button aria-haspopup="true" size="icon" variant="ghost" disabled={!canManageVehicles}>
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>

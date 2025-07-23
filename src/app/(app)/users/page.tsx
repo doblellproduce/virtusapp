@@ -215,12 +215,10 @@ export default function UsersPage() {
                         <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
-                    {isCurrentUserAdmin && (
-                        <Button onClick={() => handleOpenDialog()}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add User
-                        </Button>
-                    )}
+                    <Button onClick={() => handleOpenDialog()} disabled={!isCurrentUserAdmin}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add User
+                    </Button>
                 </div>
             </div>
             <Card>
