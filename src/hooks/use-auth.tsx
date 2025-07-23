@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUserProfile(null);
                 setRole(null);
             }
-            setLoading(false);
+             setLoading(false);
         }, (error) => {
            console.error("Error in user profile snapshot listener:", error);
            setUserProfile(null);
