@@ -139,10 +139,12 @@ export default function ReservationsClient() {
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
             });
 
-             // If vehicle was changed, update statuses
+            // If vehicle was changed, update statuses for both old and new vehicle
             if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
+                // Mark original vehicle as available
                 const oldVehicleRef = doc(db, 'vehicles', originalVehicleId);
                 await updateDoc(oldVehicleRef, { status: 'Available' });
+                // Mark new vehicle as rented
                 const newVehicleRef = doc(db, 'vehicles', selectedVehicle.id);
                 await updateDoc(newVehicleRef, { status: 'Rented' });
             }
@@ -407,4 +409,3 @@ export default function ReservationsClient() {
             </Dialog>
         </div>
     );
-}
