@@ -65,12 +65,13 @@ export default function RootPage() {
 
     React.useEffect(() => {
         if (!db) {
-            // db might not be available on first render, but auth hook will re-render when it is.
-            // On the next render, this effect will run again.
+            setLoading(false); // If db is not ready, don't show loader indefinitely
             return;
-        };
+        }
+        
         setLoading(true);
         const q = query(collection(db, 'vehicles'), where('status', '==', 'Available'));
+        
         const unsubscribe = onSnapshot(q, (snapshot) => {
             setVehicles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle)));
             setLoading(false);
@@ -78,8 +79,10 @@ export default function RootPage() {
             console.error("Error fetching vehicles:", error);
             setLoading(false);
         });
+
+        // Cleanup subscription on unmount
         return () => unsubscribe();
-    }, []); // Changed dependency from [db] to []
+    }, [db]);
 
   return (
     <div className="bg-background text-foreground min-h-screen flex flex-col font-sans">
