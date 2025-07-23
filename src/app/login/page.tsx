@@ -19,14 +19,14 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If auth state is determined and a user exists, redirect.
+    // Redirect if user object is present and authentication is not loading.
     if (!loading && user) {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
 
-  // Show spinner ONLY while the initial auth state is being determined.
+  // Show a spinner ONLY while the initial auth state is being determined.
   if (loading) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
@@ -35,22 +35,31 @@ export default function LoginPage() {
     );
   }
   
-  // If not loading and no user, it's safe to show the login form.
-  // The form itself will handle the redirection after a successful login.
+  // If not loading and no user exists, it's safe to show the login form.
+  // The LoginForm itself will now handle the redirection after a successful login.
+  if (!user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+        <div className="w-full max-w-md">
+          <Card className="shadow-2xl">
+            <CardHeader className="text-center">
+              <Logo />
+              <CardTitle className="text-2xl font-bold tracking-tight mt-4">Virtus Admin Panel</CardTitle>
+              <CardDescription>Sign in to manage your vehicle rentals</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <LoginForm />
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  // Fallback for the brief moment between user being set and redirect firing
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-2xl">
-          <CardHeader className="text-center">
-            <Logo />
-            <CardTitle className="text-2xl font-bold tracking-tight mt-4">Virtus Admin Panel</CardTitle>
-            <CardDescription>Sign in to manage your vehicle rentals</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <LoginForm />
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+    <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+    </div>
   );
 }

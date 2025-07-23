@@ -33,19 +33,19 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { login, sendPasswordReset } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   
-  const loginForm = useForm<LoginFormValues>({
+  const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
 
+  const { isSubmitting } = form.formState;
+
   const onLoginSubmit = async (data: LoginFormValues) => {
     setError(null);
-    setIsSubmitting(true);
     try {
       await login(data.email, data.password);
       // **FIX**: Explicit and immediate redirection after successful login.
@@ -72,21 +72,19 @@ export default function LoginForm() {
             break;
        }
        setError(errorMessage);
-       // Ensure the submitting state is turned off on failure
-       setIsSubmitting(false);
     }
   };
   
   const handlePasswordResetClick = async () => {
     setError(null);
-    const email = loginForm.getValues("email");
+    const email = form.getValues("email");
     if (!email) {
-      loginForm.setError("email", { type: "manual", message: "Please enter your email address to reset your password." });
+      form.setError("email", { type: "manual", message: "Please enter your email address to reset your password." });
       return;
     }
     const emailValidation = z.string().email().safeParse(email);
     if (!emailValidation.success) {
-      loginForm.setError("email", { type: "manual", message: "Please enter a valid email address to reset your password." });
+      form.setError("email", { type: "manual", message: "Please enter a valid email address to reset your password." });
       return;
     }
 
@@ -109,10 +107,10 @@ export default function LoginForm() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <Form {...loginForm}>
-        <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onLoginSubmit)} className="space-y-4">
           <FormField
-            control={loginForm.control}
+            control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
@@ -125,7 +123,7 @@ export default function LoginForm() {
             )}
           />
           <FormField
-            control={loginForm.control}
+            control={form.control}
             name="password"
             render={({ field }) => (
               <FormItem>

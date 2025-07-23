@@ -84,7 +84,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
       if (authUser) {
-        setLoading(true); // Start loading when we have a user, before fetching profile
+        // We still start loading when we have a user, before fetching profile
+        if (!loading) setLoading(true); 
         const userDocRef = doc(db, 'users', authUser.uid);
         const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -114,6 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseServices]);
 
   const handleLogin = (email: string, pass: string) => {
@@ -123,6 +125,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleLogout = () => {
     if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
+    // Set a cookie to indicate manual logout to help middleware decide
+    document.cookie = "firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     return signOut(firebaseServices.auth);
   };
 
