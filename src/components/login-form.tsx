@@ -66,10 +66,10 @@ export default function LoginForm() {
             break;
        }
        setError(errorMessage);
-    } finally {
-      // This will always run, ensuring the loading state is reset on error.
-      setIsSubmitting(false);
+       setIsSubmitting(false);
     }
+    // No need for a finally block to set isSubmitting to false,
+    // as it's handled on error and the page will navigate away on success.
   };
   
   const handlePasswordResetClick = async () => {
