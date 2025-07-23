@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -111,6 +112,7 @@ export default function MaintenancePage() {
                     date: newLog.date,
                     status: 'Paid', // Assuming maintenance is paid immediately
                     createdBy: userProfile.name,
+                    vehicleId: selectedVehicle.id, // <-- Added reference ID
                 };
                 const expenseDocRef = await addDoc(collection(db, 'expenses'), newExpense);
                 await logActivity('Create', 'Expense', expenseDocRef.id, `Auto-created expense for maintenance log ${logDocRef.id}`);
@@ -122,6 +124,7 @@ export default function MaintenancePage() {
                 status: 'Maintenance',
                 lastServiceDate: newLog.date 
             });
+            await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Maintenance (new log).`);
 
             toast({ title: 'Maintenance Logged', description: `Service for ${newLog.vehicleName} has been recorded and status updated.` });
             setOpen(false);

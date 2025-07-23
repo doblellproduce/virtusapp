@@ -53,6 +53,7 @@ export type Invoice = {
   status: 'Paid' | 'Pending' | 'Overdue' | 'Draft';
   createdBy: string;
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
+  reservationId?: string;
 };
 
 export type Expense = {
@@ -63,6 +64,7 @@ export type Expense = {
     date: string;
     status: 'Pending' | 'Paid' | 'Overdue';
     createdBy: string;
+    vehicleId?: string;
 };
 
 export type MaintenanceLog = {
