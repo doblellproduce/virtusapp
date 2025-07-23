@@ -28,6 +28,7 @@ import {
   LogOut,
   Loader2,
   History,
+  BarChartHorizontal,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -99,6 +100,7 @@ const menuItems = [
   { href: '/maintenance', label: 'Maintenance', icon: Wrench, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/calendar', label: 'Booking Calendar', icon: Calendar, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/smart-reply', label: 'Smart Reply', icon: Sparkles, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/reports', label: 'Reports', icon: BarChartHorizontal, roles: ['Admin', 'Supervisor'] },
   { href: '/logs', label: 'Activity Log', icon: History, roles: ['Admin', 'Supervisor'] },
 ];
 
