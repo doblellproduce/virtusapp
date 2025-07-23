@@ -1,66 +1,70 @@
-
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-  
-    // Helper function to get the user's role from the 'users' collection.
-    function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    function isAdmin() {
-      return isSignedIn() && getUserRole(request.auth.uid) == 'Admin';
-    }
-    
-    function isStaff() {
-      return isSignedIn() && getUserRole(request.auth.uid) in ['Admin', 'Supervisor', 'Secretary'];
-    }
-
-    // Public read for vehicle details, restricted write for staff.
-    match /vehicles/{vehicleId} {
-      allow read: if true;
-      allow create, update, delete: if isStaff();
-    }
-    
-    // Only staff can manage reservations.
-    match /reservations/{reservationId} {
-      allow read, create, update, delete: if isStaff();
-    }
-    
-    // Only staff can manage invoices.
-    match /invoices/{invoiceId} {
-      allow read, create, update, delete: if isStaff();
-    }
-    
-    // Only staff can manage maintenance logs.
-    match /maintenanceLogs/{logId} {
-       allow read, create, update, delete: if isStaff();
-    }
-    
-    // Users Collection:
-    // Read: Any staff member can read user profiles.
-    // Update: An admin or the user themselves can update a profile.
-    // Create/Delete: Only Admins can create or delete users (via Cloud Function).
-    match /users/{userId} {
-      allow read: if isStaff();
-      allow update: if isAdmin() || isOwner(userId);
-      // Create and delete operations are handled by the secure Cloud Function,
-      // so direct client creation/deletion is denied.
-      allow create, delete: if false; 
-    }
-
-    // Default deny all other paths
-    match /{document=**} {
-      allow read, write: if false;
+{
+  "rules": {
+    // Users can only read/update their own profile.
+    "users": {
+      "$uid": {
+        "read": "request.auth.uid == $uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']",
+        "update": "request.auth.uid == $uid",
+        "create": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin'",
+        "delete": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin'"
+      }
+    },
+    // Vehicles are public to read, but only specific roles can modify them.
+    "vehicles": {
+      "$vehicleId": {
+        "read": "true", // Publicly readable
+        "write": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']"
+      }
+    },
+     // Reservations can be read by admins/supervisors. Users can create them.
+    "reservations": {
+      "$reservationId": {
+        "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']",
+        "create": "request.auth != null", // Any authenticated user can start a reservation
+        "update": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']"
+      }
+    },
+    // Invoices are admin/supervisor only
+    "invoices": {
+      "$invoiceId": {
+        "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']",
+        "write": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']"
+      }
+    },
+     // Documents are admin/supervisor only, except for creation by auth'd user
+    "documents": {
+       "$docId": {
+        "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']",
+        "write": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']"
+       }
+    },
+     // Expenses are admin/supervisor only
+    "expenses": {
+       "$expenseId": {
+         "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']",
+        "write": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']"
+       }
+    },
+     // Contracts are admin/supervisor only
+    "contracts": {
+       "$contractId": {
+         "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']",
+        "write": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']"
+       }
+    },
+     // Maintenance logs are admin/supervisor only
+    "maintenanceLogs": {
+       "$logId": {
+         "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']",
+        "write": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor']"
+       }
+    },
+    // Activity logs are admin/supervisor only
+    "activityLogs": {
+        "$logId": {
+            "read": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin'",
+            "write": "get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin'"
+        }
     }
   }
 }

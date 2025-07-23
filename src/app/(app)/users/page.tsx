@@ -18,16 +18,10 @@ import { collection, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firesto
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
-// This function now calls our secure backend Cloud Function
+// This function now calls our secure backend API Route
 async function inviteUser(email: string, displayName: string, role: UserRole) {
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    if (!projectId) {
-        return { success: false, message: 'Firebase Project ID is not configured.' };
-    }
-    const functionUrl = `https://us-central1-${projectId}.cloudfunctions.net/createNewUser`;
-    
     try {
-        const response = await fetch(functionUrl, {
+        const response = await fetch('/api/users', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
