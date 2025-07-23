@@ -16,11 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/use-auth';
 import type { Vehicle } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from 'next/image';
 
-type NewVehicle = Omit<Vehicle, 'id' | 'imageUrls' | 'dataAiHint'>;
+type NewVehicle = Omit<Vehicle, 'id' | 'imageUrls' | 'dataAiHint' | 'tenantId'>;
 
 const emptyVehicle: NewVehicle = {
     make: '', model: '', plate: '', category: 'Economy', status: 'Available', pricePerDay: 0,
@@ -28,7 +28,7 @@ const emptyVehicle: NewVehicle = {
 };
 
 export default function VehiclesPage() {
-    const { db, storage, role } = useAuth();
+    const { db, storage, role, userProfile } = useAuth();
     const { toast } = useToast();
 
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
@@ -44,10 +44,14 @@ export default function VehiclesPage() {
     const canManageVehicles = role === 'Admin' || role === 'Supervisor';
 
     const fetchData = React.useCallback(async () => {
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setLoading(true);
         try {
-            const q = query(collection(db, 'vehicles'), orderBy('make'));
+            const q = query(
+                collection(db, 'vehicles'),
+                where('tenantId', '==', userProfile.tenantId),
+                orderBy('make')
+            );
             const querySnapshot = await getDocs(q);
             const vehiclesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
@@ -57,7 +61,7 @@ export default function VehiclesPage() {
         } finally {
             setLoading(false);
         }
-    }, [db, toast]);
+    }, [db, toast, userProfile?.tenantId]);
 
     React.useEffect(() => {
         if(db) fetchData();
@@ -127,7 +131,7 @@ export default function VehiclesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setIsSubmitting(true);
         
         try {
@@ -136,17 +140,21 @@ export default function VehiclesPage() {
                  uploadedImageUrls = await uploadImages();
             }
 
-            const finalVehicleData = { 
-                ...vehicleData, 
-                imageUrls: uploadedImageUrls,
-                dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase()
-            };
-
             if (isEditing && editingVehicle) {
                 const vehicleRef = doc(db, 'vehicles', editingVehicle.id);
-                await updateDoc(vehicleRef, finalVehicleData);
+                await updateDoc(vehicleRef, { 
+                    ...vehicleData,
+                    imageUrls: uploadedImageUrls,
+                    dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase()
+                });
                 toast({ title: 'Vehicle Updated', description: `${vehicleData.make} ${vehicleData.model} has been updated.` });
             } else {
+                const finalVehicleData = { 
+                    ...vehicleData, 
+                    imageUrls: uploadedImageUrls,
+                    dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase(),
+                    tenantId: userProfile.tenantId,
+                };
                 await addDoc(collection(db, 'vehicles'), finalVehicleData);
                 toast({ title: 'Vehicle Added', description: `${vehicleData.make} ${vehicleData.model} has been added to the fleet.` });
             }
@@ -360,3 +368,5 @@ export default function VehiclesPage() {
         </div>
     );
 }
+
+    

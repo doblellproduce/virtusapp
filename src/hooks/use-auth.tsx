@@ -96,7 +96,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 action,
                 entityType,
                 entityId,
-                details
+                details,
+                tenantId: userProfile.tenantId,
             };
             await addDoc(collection(firebaseServices.db, 'activityLogs'), logEntry);
         } catch (error) {
@@ -172,7 +173,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         action: 'Login',
         entityType: 'Auth',
         entityId: credentials.user.uid,
-        details: `User ${profile.name} logged in.`
+        details: `User ${profile.name} logged in.`,
+        tenantId: profile.tenantId,
     });
 
     return credentials;
@@ -215,3 +217,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

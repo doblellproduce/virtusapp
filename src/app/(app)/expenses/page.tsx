@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy, where } from 'firebase/firestore';
 
 type Expense = {
     id: string;
@@ -23,10 +23,11 @@ type Expense = {
     date: string;
     status: 'Pending' | 'Paid' | 'Overdue';
     createdBy: string;
+    tenantId: string;
 }
-type NewExpense = Omit<Expense, 'id'>;
+type NewExpense = Omit<Expense, 'id' | 'tenantId'>;
 
-const emptyExpense: Omit<Expense, 'id' | 'createdBy'> = {
+const emptyExpense: Omit<Expense, 'id' | 'createdBy' | 'tenantId'> = {
     description: '',
     category: 'Maintenance',
     amount: '',
@@ -48,9 +49,13 @@ export default function ExpensesPage() {
     const canEdit = role === 'Admin' || role === 'Supervisor';
 
     const fetchExpenses = React.useCallback(() => {
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setLoading(true);
-        const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+        const q = query(
+            collection(db, 'expenses'), 
+            where('tenantId', '==', userProfile.tenantId), 
+            orderBy('date', 'desc')
+        );
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const expensesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
             setExpenses(expensesData);
@@ -61,7 +66,7 @@ export default function ExpensesPage() {
             setLoading(false);
         });
         return unsubscribe;
-    }, [db, toast]);
+    }, [db, toast, userProfile?.tenantId]);
 
     React.useEffect(() => {
         const unsubscribe = fetchExpenses();
@@ -97,16 +102,19 @@ export default function ExpensesPage() {
         if (!db || !userProfile) return;
         setIsSubmitting(true);
 
-        const dataToSave: NewExpense = {
+        const dataToSave = {
             ...expenseData,
             amount: parseFloat(expenseData.amount).toFixed(2),
             createdBy: userProfile.name,
+            tenantId: userProfile.tenantId,
         };
 
         try {
             if (isEditing && editingExpense) {
                 const expenseRef = doc(db, 'expenses', editingExpense.id);
-                await updateDoc(expenseRef, dataToSave);
+                // We don't update tenantId on edit
+                const { tenantId, ...updateData } = dataToSave;
+                await updateDoc(expenseRef, updateData);
                 await logActivity('Update', 'Expense', editingExpense.id, `Updated expense: ${dataToSave.description}`);
                 toast({ title: 'Expense Updated', description: 'The expense has been successfully updated.' });
             } else {
@@ -307,3 +315,5 @@ export default function ExpensesPage() {
         </div>
     );
 }
+
+    

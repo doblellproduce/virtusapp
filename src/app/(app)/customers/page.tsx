@@ -14,9 +14,9 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import type { Customer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
 
-type NewCustomer = Omit<Customer, 'id' | 'createdAt'>;
+type NewCustomer = Omit<Customer, 'id' | 'createdAt' | 'tenantId'>;
 
 const emptyCustomer: NewCustomer = {
     name: '',
@@ -28,7 +28,7 @@ const emptyCustomer: NewCustomer = {
 };
 
 export default function CustomersPage() {
-    const { db, logActivity } = useAuth();
+    const { db, userProfile, logActivity } = useAuth();
     const { toast } = useToast();
     
     const [customers, setCustomers] = React.useState<Customer[]>([]);
@@ -42,9 +42,13 @@ export default function CustomersPage() {
     const isEditing = editingCustomer !== null;
     
     const fetchCustomers = React.useCallback(() => {
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setLoading(true);
-        const q = query(collection(db, 'customers'), orderBy('name'));
+        const q = query(
+            collection(db, 'customers'), 
+            where('tenantId', '==', userProfile.tenantId),
+            orderBy('name')
+        );
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
             setCustomers(customersData);
@@ -55,7 +59,7 @@ export default function CustomersPage() {
             setLoading(false);
         });
         return unsubscribe;
-    }, [db, toast]);
+    }, [db, toast, userProfile?.tenantId]);
 
     React.useEffect(() => {
         const unsubscribe = fetchCustomers();
@@ -80,7 +84,7 @@ export default function CustomersPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setIsSubmitting(true);
 
         try {
@@ -93,6 +97,7 @@ export default function CustomersPage() {
                 const customerToAdd = {
                     ...customerData,
                     createdAt: new Date().toISOString(),
+                    tenantId: userProfile.tenantId,
                 }
                 const newDocRef = await addDoc(collection(db, 'customers'), customerToAdd);
                 await logActivity('Create', 'Customer', newDocRef.id, `Created new customer: ${customerData.name}`);
@@ -283,3 +288,5 @@ export default function CustomersPage() {
         </div>
     );
 }
+
+    

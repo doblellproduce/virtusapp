@@ -13,12 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-
-const initialDocuments = [
-  // This is now just for visual reference, data will come from Firestore
-];
 
 type Document = {
     id: string;
@@ -29,11 +25,10 @@ type Document = {
     fileName: string;
     status: 'Verified' | 'Pending' | 'Rejected' | 'Signed';
     reservationId?: string;
+    tenantId: string;
 }
 
-type NewDocument = {
-    customer: string;
-    type: string;
+type NewDocument = Omit<Document, 'id' | 'date' | 'fileUrl' | 'fileName' | 'status' | 'tenantId' | 'reservationId'> & {
     file: File | null;
 }
 
@@ -45,7 +40,7 @@ const emptyDocument: NewDocument = {
 
 
 export default function DocumentsPage() {
-    const { db, storage } = useAuth();
+    const { db, storage, userProfile } = useAuth();
     const [documents, setDocuments] = React.useState<Document[]>([]);
     const [newDocument, setNewDocument] = React.useState<NewDocument>(emptyDocument);
     const { toast } = useToast();
@@ -53,11 +48,11 @@ export default function DocumentsPage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const fetchDocs = React.useCallback(() => {
-        if(!db) return;
+        if(!db || !userProfile?.tenantId) return;
         setLoading(true);
 
-        const manualDocsQuery = query(collection(db, "documents"), orderBy("date", "desc"));
-        const contractsQuery = query(collection(db, "contracts"), orderBy("date", "desc"));
+        const manualDocsQuery = query(collection(db, "documents"), where('tenantId', '==', userProfile.tenantId), orderBy("date", "desc"));
+        const contractsQuery = query(collection(db, "contracts"), where('tenantId', '==', userProfile.tenantId), orderBy("date", "desc"));
 
         const unsubDocs = onSnapshot(manualDocsQuery, (docSnapshot) => {
             const manualDocsData = docSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document));
@@ -74,6 +69,7 @@ export default function DocumentsPage() {
                         fileName: data.file.name,
                         status: data.status,
                         reservationId: data.reservationId,
+                        tenantId: data.tenantId,
                     } as Document;
                 });
 
@@ -82,11 +78,11 @@ export default function DocumentsPage() {
                 unique.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 setDocuments(unique);
                 setLoading(false);
-            });
+            }, () => setLoading(false));
              return () => unsubContracts();
-        });
+        }, () => setLoading(false));
         return () => unsubDocs();
-    }, [db]);
+    }, [db, userProfile?.tenantId]);
 
 
     React.useEffect(() => {
@@ -111,7 +107,7 @@ export default function DocumentsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!newDocument.customer || !newDocument.type || !newDocument.file || !db || !storage) {
+        if(!newDocument.customer || !newDocument.type || !newDocument.file || !db || !storage || !userProfile?.tenantId) {
              toast({
                 variant: "destructive",
                 title: "Incomplete form",
@@ -135,6 +131,7 @@ export default function DocumentsPage() {
                 fileName: newDocument.file.name,
                 date: new Date().toISOString().split('T')[0],
                 status: 'Pending' as const,
+                tenantId: userProfile.tenantId,
             }
             await addDoc(collection(db, 'documents'), documentToAdd);
 
@@ -321,3 +318,5 @@ export default function DocumentsPage() {
         </div>
     );
 }
+
+    

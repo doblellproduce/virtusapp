@@ -22,7 +22,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { CustomerCombobox } from '@/components/customer-combobox';
 import DepartureInspectionModal from '@/components/departure-inspection-modal';
 
-type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection'>;
+type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection' | 'tenantId'>;
 
 const emptyReservation: NewReservation = {
     customerId: '',
@@ -34,7 +34,7 @@ const emptyReservation: NewReservation = {
 };
 
 export default function ReservationsClient() {
-    const { user, db, storage, logActivity } = useAuth();
+    const { user, db, storage, userProfile, logActivity } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -52,25 +52,32 @@ export default function ReservationsClient() {
     const [inspectionType, setInspectionType] = React.useState<'departure' | 'return'>('departure');
 
     React.useEffect(() => {
-        if (!db) return;
-        const unsubVehicles = onSnapshot(collection(db, 'vehicles'), (snapshot) => {
+        if (!db || !userProfile?.tenantId) return;
+
+        const vehiclesQuery = query(collection(db, 'vehicles'), where('tenantId', '==', userProfile.tenantId));
+        const unsubVehicles = onSnapshot(vehiclesQuery, (snapshot) => {
             const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
         });
-        const unsubReservations = onSnapshot(collection(db, 'reservations'), (snapshot) => {
+
+        const reservationsQuery = query(collection(db, 'reservations'), where('tenantId', '==', userProfile.tenantId));
+        const unsubReservations = onSnapshot(reservationsQuery, (snapshot) => {
             const reservationsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
             setReservations(reservationsData);
         });
-        const unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
+        
+        const customersQuery = query(collection(db, 'customers'), where('tenantId', '==', userProfile.tenantId));
+        const unsubCustomers = onSnapshot(customersQuery, (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
             setCustomers(customersData);
         });
+
         return () => {
             unsubVehicles();
             unsubReservations();
             unsubCustomers();
         };
-    }, [db]);
+    }, [db, userProfile?.tenantId]);
 
     React.useEffect(() => {
         const viewId = searchParams.get('view');
@@ -133,10 +140,11 @@ export default function ReservationsClient() {
     };
 
     const checkVehicleAvailability = async (vehicleId: string, pickup: string, dropoff: string, excludeReservationId?: string) => {
-        if(!db) return true;
+        if(!db || !userProfile?.tenantId) return true;
         
         let reservationsRef = query(
             collection(db, "reservations"),
+            where("tenantId", "==", userProfile.tenantId),
             where("vehicleId", "==", vehicleId),
             where("status", "in", ["Upcoming", "Active"])
         );
@@ -167,7 +175,7 @@ export default function ReservationsClient() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) return;
+        if (!db || !userProfile) return;
 
         const isAvailable = await checkVehicleAvailability(reservationData.vehicleId, reservationData.pickupDate, reservationData.dropoffDate, isEditing ? editingReservation?.id : undefined);
         if (!isAvailable) {
@@ -214,6 +222,7 @@ export default function ReservationsClient() {
                 ...reservationData,
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
                 agent: agentName,
+                tenantId: userProfile.tenantId,
             };
             await setDoc(doc(db, 'reservations', newId), reservationToAdd);
             await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customerName} with vehicle ${reservationToAdd.vehicle}`);
@@ -252,7 +261,7 @@ export default function ReservationsClient() {
     };
     
     const handleGenerateInvoice = async (reservation: Reservation) => {
-        if (!db) return;
+        if (!db || !userProfile) return;
         const agentName = user?.displayName ?? 'System';
         
         const newInvoiceId = `INV-2024-${String(Date.now()).slice(-4)}`;
@@ -266,6 +275,7 @@ export default function ReservationsClient() {
             createdBy: agentName,
             paymentMethod: 'N/A' as const,
             reservationId: reservation.id, 
+            tenantId: userProfile.tenantId,
         };
 
         await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice);
@@ -576,3 +586,5 @@ export default function ReservationsClient() {
         </div>
     );
 }
+
+    

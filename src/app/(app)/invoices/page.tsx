@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
-import { onSnapshot, collection, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { onSnapshot, collection, doc, setDoc, updateDoc, query, where } from 'firebase/firestore';
 
 type Invoice = {
     id: string;
@@ -22,11 +22,12 @@ type Invoice = {
     status: 'Paid' | 'Pending' | 'Overdue' | 'Draft';
     createdBy: string;
     paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
+    tenantId: string;
 };
-type NewInvoice = Omit<Invoice, 'id' | 'createdBy'>;
+type NewInvoice = Omit<Invoice, 'id' | 'createdBy' | 'tenantId'>;
 
 export default function InvoicesPage() {
-    const { user, db, logActivity } = useAuth();
+    const { user, db, userProfile, logActivity } = useAuth();
     const [invoices, setInvoices] = React.useState<Invoice[]>([]);
     const [open, setOpen] = React.useState(false);
     const [editingInvoice, setEditingInvoice] = React.useState<Invoice | null>(null);
@@ -41,13 +42,14 @@ export default function InvoicesPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
 
     React.useEffect(() => {
-        if (!db) return;
-        const unsubscribe = onSnapshot(collection(db, 'invoices'), (snapshot) => {
+        if (!db || !userProfile?.tenantId) return;
+        const q = query(collection(db, 'invoices'), where('tenantId', '==', userProfile.tenantId));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const invoicesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invoice));
             setInvoices(invoicesData);
         });
         return () => unsubscribe();
-    }, [db]);
+    }, [db, userProfile?.tenantId]);
 
     const isEditing = editingInvoice !== null;
 
@@ -89,7 +91,7 @@ export default function InvoicesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) return;
+        if (!db || !userProfile) return;
         const agentName = user?.displayName ?? 'System';
 
         if (isEditing && editingInvoice) {
@@ -102,10 +104,11 @@ export default function InvoicesPage() {
             await logActivity('Update', 'Invoice', editingInvoice.id, `Updated invoice for ${invoiceData.customer}`);
         } else {
             const newId = generateNewInvoiceId();
-            const invoiceToAdd: Omit<Invoice, 'id'> = {
+            const invoiceToAdd = {
                 ...invoiceData,
                 amount: `${parseFloat(invoiceData.amount).toFixed(2)}`,
                 createdBy: agentName,
+                tenantId: userProfile.tenantId,
             };
             await setDoc(doc(db, 'invoices', newId), invoiceToAdd);
             await logActivity('Create', 'Invoice', newId, `Created invoice for ${invoiceData.customer} for $${invoiceData.amount}`);
@@ -293,3 +296,5 @@ export default function InvoicesPage() {
         </div>
     );
 }
+
+    

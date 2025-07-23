@@ -15,10 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, doc, updateDoc, addDoc, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, addDoc, query, orderBy, getDocs, where } from 'firebase/firestore';
 import type { Vehicle, MaintenanceLog, Expense } from '@/lib/types';
 
-type NewMaintenanceLog = Omit<MaintenanceLog, 'id' | 'vehicleName' | 'createdBy'>;
+type NewMaintenanceLog = Omit<MaintenanceLog, 'id' | 'vehicleName' | 'createdBy' | 'tenantId'>;
 
 const emptyLog: NewMaintenanceLog = {
     vehicleId: '',
@@ -39,14 +39,15 @@ export default function MaintenancePage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const fetchData = React.useCallback(async () => {
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setLoading(true);
         try {
-            const vehiclesSnapshot = await getDocs(collection(db, 'vehicles'));
+            const vehiclesQuery = query(collection(db, 'vehicles'), where('tenantId', '==', userProfile.tenantId));
+            const vehiclesSnapshot = await getDocs(vehiclesQuery);
             const vehiclesData = vehiclesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
 
-            const logsQuery = query(collection(db, 'maintenanceLogs'), orderBy('date', 'desc'));
+            const logsQuery = query(collection(db, 'maintenanceLogs'), where('tenantId', '==', userProfile.tenantId), orderBy('date', 'desc'));
             const logsSnapshot = await getDocs(logsQuery);
             const logsData = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog));
             setLogs(logsData);
@@ -57,7 +58,7 @@ export default function MaintenancePage() {
         } finally {
             setLoading(false);
         }
-    }, [toast, db]);
+    }, [toast, db, userProfile?.tenantId]);
 
     React.useEffect(() => {
         if(db) fetchData();
@@ -96,6 +97,7 @@ export default function MaintenancePage() {
             ...logData,
             vehicleName: `${selectedVehicle.make} ${selectedVehicle.model}`,
             createdBy: userProfile.name,
+            tenantId: userProfile.tenantId,
         };
         
         try {
@@ -112,7 +114,8 @@ export default function MaintenancePage() {
                     date: newLog.date,
                     status: 'Paid', // Assuming maintenance is paid immediately
                     createdBy: userProfile.name,
-                    vehicleId: selectedVehicle.id, // <-- Added reference ID
+                    vehicleId: selectedVehicle.id,
+                    tenantId: userProfile.tenantId,
                 };
                 const expenseDocRef = await addDoc(collection(db, 'expenses'), newExpense);
                 await logActivity('Create', 'Expense', expenseDocRef.id, `Auto-created expense for maintenance log ${logDocRef.id}`);
@@ -312,3 +315,5 @@ export default function MaintenancePage() {
         </div>
     );
 }
+
+    

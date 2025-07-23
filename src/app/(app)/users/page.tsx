@@ -14,19 +14,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import type { UserProfile, UserRole } from '@/lib/types';
-import { collection, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 // This function now calls our secure backend API Route
-async function inviteUser(email: string, displayName: string, role: UserRole) {
+async function inviteUser(email: string, displayName: string, role: UserRole, tenantId: string) {
     try {
         const response = await fetch('/api/users', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email, displayName, role }),
+            body: JSON.stringify({ email, displayName, role, tenantId }),
         });
 
         const result = await response.json();
@@ -35,7 +35,7 @@ async function inviteUser(email: string, displayName: string, role: UserRole) {
             throw new Error(result.error || 'Failed to create user.');
         }
 
-        return { success: true, message: result.message, newUser: { id: result.uid, email, name: displayName, role } };
+        return { success: true, message: result.message, newUser: { id: result.uid, email, name: displayName, role, tenantId } };
 
     } catch (error: any) {
         console.error("Error inviting user:", error);
@@ -44,7 +44,7 @@ async function inviteUser(email: string, displayName: string, role: UserRole) {
 }
 
 
-type NewUser = Omit<UserProfile, 'id' | 'photoURL'>;
+type NewUser = Omit<UserProfile, 'id' | 'photoURL' | 'tenantId'>;
 
 const emptyUser: NewUser = {
     name: '',
@@ -60,14 +60,15 @@ export default function UsersPage() {
     const [editingUser, setEditingUser] = React.useState<UserProfile | null>(null);
     const [userData, setUserData] = React.useState<NewUser>(emptyUser);
     const { toast } = useToast();
-    const { user: currentUser, role: currentUserRole, sendPasswordReset, db, logActivity } = useAuth();
+    const { user: currentUser, userProfile, role: currentUserRole, sendPasswordReset, db, logActivity } = useAuth();
     const [searchTerm, setSearchTerm] = React.useState('');
 
     const fetchUsers = React.useCallback(async () => {
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setLoading(true);
         try {
-            const usersSnapshot = await getDocs(collection(db, 'users'));
+            const usersQuery = query(collection(db, 'users'), where('tenantId', '==', userProfile.tenantId));
+            const usersSnapshot = await getDocs(usersQuery);
             const usersData = usersSnapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as UserProfile))
                 .filter(user => user.name && user.email);
@@ -78,7 +79,7 @@ export default function UsersPage() {
         } finally {
             setLoading(false);
         }
-    }, [toast, db]);
+    }, [toast, db, userProfile?.tenantId]);
 
     React.useEffect(() => {
         if (db) fetchUsers();
@@ -109,8 +110,8 @@ export default function UsersPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) {
-            toast({ variant: "destructive", title: "Database Error", description: "Database service is not available." });
+        if (!db || !userProfile?.tenantId) {
+            toast({ variant: "destructive", title: "Database Error", description: "Database service is not available or tenant is missing." });
             return;
         }
         setIsSubmitting(true);
@@ -131,7 +132,7 @@ export default function UsersPage() {
             await logActivity('Update', 'User', editingUser.id, `Updated user profile for ${userData.name}`);
             toast({ title: "User Updated", description: `Details for ${userData.name} have been updated.` });
         } else {
-            const result = await inviteUser(userData.email, userData.name, userData.role);
+            const result = await inviteUser(userData.email, userData.name, userData.role, userProfile.tenantId);
              if (result.success && result.newUser) {
                 await logActivity('Create', 'User', result.newUser.id, `Invited new user: ${result.newUser.name}`);
                 toast({ title: "User Invited Successfully", description: result.message });
@@ -184,7 +185,7 @@ export default function UsersPage() {
             await logActivity('Update', 'User', user.id, `Sent password reset email to ${user.name}`);
             toast({
                 title: "Password Reset Sent",
-                description: `A password reset link has been sent to ${user.email}.`
+                description: `A link to reset your password has been sent to ${user.email}.`
             });
         } catch (error: any) {
             toast({
@@ -363,3 +364,5 @@ export default function UsersPage() {
         </div>
     );
 }
+
+    

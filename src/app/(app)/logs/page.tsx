@@ -5,10 +5,10 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Loader2, User, Car, FileText, CreditCard, Fuel, Wrench, KeyRound, LogOut, FileSignature } from 'lucide-react';
+import { RefreshCw, Loader2, User, Car, FileText, CreditCard, Fuel, Wrench, KeyRound, LogOut, FileSignature, Building } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import type { ActivityLog } from '@/lib/types';
-import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -21,6 +21,8 @@ const iconMap: { [key: string]: React.ElementType } = {
     Contract: FileText,
     Maintenance: Wrench,
     Auth: KeyRound,
+    Customer: User,
+    Tenant: Building,
 };
 
 const actionColorMap: { [key: string]: string } = {
@@ -34,14 +36,19 @@ const actionColorMap: { [key: string]: string } = {
 
 
 export default function LogsPage() {
-    const { db } = useAuth();
+    const { db, userProfile } = useAuth();
     const [logs, setLogs] = React.useState<ActivityLog[]>([]);
     const [loading, setLoading] = React.useState(true);
     
     const fetchLogs = React.useCallback(() => {
-        if (!db) return;
+        if (!db || !userProfile?.tenantId) return;
         setLoading(true);
-        const q = query(collection(db, 'activityLogs'), orderBy('timestamp', 'desc'), limit(50));
+        const q = query(
+            collection(db, 'activityLogs'), 
+            where('tenantId', '==', userProfile.tenantId), 
+            orderBy('timestamp', 'desc'), 
+            limit(50)
+        );
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
@@ -53,7 +60,7 @@ export default function LogsPage() {
         });
 
         return unsubscribe;
-    }, [db]);
+    }, [db, userProfile?.tenantId]);
 
     React.useEffect(() => {
         const unsubscribe = fetchLogs();
@@ -123,3 +130,5 @@ export default function LogsPage() {
         </div>
     )
 }
+
+    

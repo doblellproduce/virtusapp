@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDB } from '@/lib/firebase/admin';
 import type { UserRole } from '@/lib/types';
@@ -20,9 +21,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Validate Input
-    const { email, displayName, role } = (await request.json()) as { email: string; displayName: string, role: UserRole };
-    if (!email || !displayName || !role) {
-      return NextResponse.json({ error: 'Missing required fields: email, displayName, role.' }, { status: 400 });
+    const { email, displayName, role, tenantId } = (await request.json()) as { email: string; displayName: string, role: UserRole, tenantId: string };
+    if (!email || !displayName || !role || !tenantId) {
+      return NextResponse.json({ error: 'Missing required fields: email, displayName, role, tenantId.' }, { status: 400 });
     }
     
     // **SECURITY FIX**: Prevent creating another admin via the API
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
       email: email,
       role: role,
       photoURL: "",
+      tenantId: tenantId,
     });
 
     // 5. Generate Password Reset Link (acts as an invite)
@@ -56,7 +58,8 @@ export async function POST(request: NextRequest) {
         action: 'Create',
         entityType: 'User',
         entityId: userRecord.uid,
-        details: `Invited new user: ${displayName} with role ${role}`
+        details: `Invited new user: ${displayName} with role ${role}`,
+        tenantId: tenantId,
     });
 
 
@@ -86,3 +89,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage, details: error.message }, { status: statusCode });
   }
 }
+
+    
