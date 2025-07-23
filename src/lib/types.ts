@@ -2,7 +2,7 @@
 
 // In a real application, this data would come from a database.
 
-export type UserRole = 'Admin' | 'Supervisor' | 'Secretary';
+export type UserRole = 'Admin' | 'Supervisor' | 'Secretary' | 'SuperAdmin';
 
 export type UserProfile = {
     id: string; // Corresponds to Firebase Auth UID
@@ -10,6 +10,14 @@ export type UserProfile = {
     email: string;
     role: UserRole;
     photoURL?: string;
+    tenantId: string; // ID of the company the user belongs to
+};
+
+export type Tenant = {
+    id: string;
+    name: string; // e.g., "Virtus Car Rental"
+    createdAt: string; // ISO string
+    status: 'active' | 'suspended' | 'trial';
 };
 
 export type Customer = {
@@ -21,10 +29,11 @@ export type Customer = {
     license: string;
     address: string;
     createdAt: string; // ISO string
+    tenantId: string;
 };
 
 export type Vehicle = {
-    id: string; // Changed to string to match Firestore document IDs
+    id: string; 
     make: string;
     model: string;
     plate: string;
@@ -41,6 +50,7 @@ export type Vehicle = {
         engine: string;
     };
     lastServiceDate: string;
+    tenantId: string;
 };
 
 export type VehicleInspection = {
@@ -56,16 +66,17 @@ export type Reservation = {
     id: string;
     customerId: string;
     customerName: string;
-    vehicleId: string; // Changed to string to match Firestore document IDs
+    vehicleId: string;
     vehicle: string;
     pickupDate: string;
     dropoffDate: string;
     status: 'Upcoming' | 'Active' | 'Completed' | 'Cancelled' | 'Pending Signature';
     agent: string;
-    totalCost?: number; // Added to store the calculated cost
-    insurance?: any; // Using any for simplicity as it's complex
+    totalCost?: number; 
+    insurance?: any;
     departureInspection?: VehicleInspection;
     returnInspection?: VehicleInspection;
+    tenantId: string;
 };
 
 export type Invoice = {
@@ -77,6 +88,7 @@ export type Invoice = {
   createdBy: string;
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
   reservationId?: string;
+  tenantId: string;
 };
 
 export type Expense = {
@@ -88,25 +100,28 @@ export type Expense = {
     status: 'Pending' | 'Paid' | 'Overdue';
     createdBy: string;
     vehicleId?: string;
+    tenantId: string;
 };
 
 export type MaintenanceLog = {
     id: string;
-    vehicleId: string; // Changed to string to match Firestore document IDs
+    vehicleId: string;
     vehicleName: string;
     date: string;
     serviceType: string;
     cost: string;
     notes: string;
     createdBy: string;
+    tenantId: string;
 };
 
 export type ActivityLog = {
     id: string;
-    timestamp: string; // Should be an ISO string
-    user: string; // User's name or email
+    timestamp: string;
+    user: string;
     action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel';
-    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer';
+    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer' | 'Tenant';
     entityId: string;
     details: string;
+    tenantId: string;
 };

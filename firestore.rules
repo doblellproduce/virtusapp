@@ -2,49 +2,48 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check user roles from their profile
-    function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    
+    // Helper function to get the user's role and tenantId from the users collection
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
     
-    // Public access for vehicles
-    match /vehicles/{vehicleId} {
-      allow read: if true;
-      allow write: if request.auth != null; // Only authenticated users can modify
+    // Helper function to check if a user belongs to a specific tenant
+    function isUserOfTenant(userId, tenantId) {
+      return getUserData(userId).tenantId == tenantId;
     }
     
-    // User can read/update their own profile.
-    // Admins/Supervisors can list users for management purposes.
+    // Helper function to check user role
+    function isRole(userId, role) {
+      return getUserData(userId).role == role;
+    }
+
+    function isSuperAdmin(userId) {
+      return isRole(userId, 'SuperAdmin');
+    }
+
+    // Tenants can be read by any authenticated user (to get their own tenant name, etc.)
+    // But only SuperAdmins can create, update or delete them.
+    match /tenants/{tenantId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin(request.auth.uid);
+    }
+
+    // A user can only read their own profile, but can update it.
+    // SuperAdmins can read any user profile.
+    // No one can delete a user doc directly except SuperAdmins (deletion should happen via a Cloud Function).
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || getUserRole(request.auth.uid) in ['Admin', 'Supervisor']);
-      allow update: if request.auth != null && request.auth.uid == userId;
-      // Create and delete should be handled by secure backend functions.
-      allow create, delete: if getUserRole(request.auth.uid) == 'Admin';
+      allow get: if request.auth.uid == userId || isSuperAdmin(request.auth.uid);
+      allow list: if isSuperAdmin(request.auth.uid); // Only SuperAdmins can list all users
+      allow update: if request.auth.uid == userId || isSuperAdmin(request.auth.uid);
+      allow create, delete: if isSuperAdmin(request.auth.uid);
     }
     
-    // Only Admins and Supervisors can read activity logs
-    match /activityLogs/{logId} {
-      allow read: if request.auth != null && getUserRole(request.auth.uid) in ['Admin', 'Supervisor'];
-      allow create: if request.auth != null; // Any authenticated user can trigger a log
-      allow update, delete: if false; // Logs should be immutable
-    }
-
-    // Only Admins and Supervisors can manage expenses
-    match /expenses/{expenseId} {
-        allow read, write: if request.auth != null && getUserRole(request.auth.uid) in ['Admin', 'Supervisor'];
-    }
-
-    // Contracts can only be read by admins/supervisors. Can be created by anyone (during booking)
-    match /contracts/{contractId} {
-        allow read: if request.auth != null && getUserRole(request.auth.uid) in ['Admin', 'Supervisor', 'Secretary'];
-        allow write: if request.auth != null;
-    }
-
-    // All other business-critical collections require authentication
-    // and specific roles for access.
-    match /{document=**} {
-      allow read, write: if request.auth != null && getUserRole(request.auth.uid) in ['Admin', 'Supervisor', 'Secretary'];
+    // Multi-tenant collections: Data is partitioned by tenantId
+    // The user must belong to the tenant to access its data.
+    match /{collection}/{docId} {
+      // This applies to: vehicles, reservations, customers, invoices, expenses, maintenanceLogs, activityLogs, contracts, documents
+      allow read, write: if request.auth != null && isUserOfTenant(request.auth.uid, resource.data.tenantId);
     }
   }
 }

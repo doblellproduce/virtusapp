@@ -30,6 +30,7 @@ import {
   History,
   BarChartHorizontal,
   UserCog,
+  Building,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -64,6 +65,7 @@ const menuItems = [
   { href: '/reports', label: 'Reports', icon: BarChartHorizontal, roles: ['Admin', 'Supervisor'] },
   { href: '/logs', label: 'Activity Log', icon: History, roles: ['Admin', 'Supervisor'] },
   { href: '/users', label: 'Employees', icon: UserCog, roles: ['Admin'] },
+  { href: '/super-admin', label: 'Tenants', icon: Building, roles: ['SuperAdmin'] },
 ];
 
 export default function AdminLayout({
