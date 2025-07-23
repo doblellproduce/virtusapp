@@ -28,7 +28,7 @@ function VehicleCard({ vehicle, priority }: { vehicle: Vehicle; priority?: boole
             <Image 
                 src={imageUrl} 
                 alt={`${vehicle.make} ${vehicle.model}`} 
-                layout="fill"
+                fill
                 className="object-cover"
                 data-ai-hint={vehicle.dataAiHint || `${vehicle.make} ${vehicle.model}`}
                 priority={priority}
