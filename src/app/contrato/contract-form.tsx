@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useSearchParams, notFound, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { insuranceOptions } from '@/lib/data';
@@ -26,7 +26,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { CheckCircle, Home, Loader2 } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 
 const Logo = () => (
@@ -60,7 +60,6 @@ type ReservationData = {
 
 export default function ContractForm() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const { toast } = useToast();
     const { db } = useAuth();
     
@@ -72,7 +71,6 @@ export default function ContractForm() {
     const [showTerms, setShowTerms] = React.useState(false);
     const [loading, setLoading] = React.useState(true);
 
-    // Form state for all contract fields
     const [formData, setFormData] = React.useState({
         residence: '', city: '', state: '', idOrPassport: '', license: '', addressInDR: '',
         driver2Name: '', driver2License: '', driver2Address: '', driver2Phone: '',
@@ -113,35 +111,53 @@ export default function ContractForm() {
         setFormData(prev => ({...prev, [id]: value}));
     };
 
-    const handleConfirmAndSign = () => {
+    const handleConfirmAndSign = async () => {
+        if(!reservation || !db) return;
         setSubmissionStatus('submitting');
         
-        if(!reservation) return;
-
+        const contractId = `CON-${reservation.id}`;
         const newContract = {
-            id: `CON-${reservation.id}`,
+            id: contractId,
             customer: reservation.customer,
             type: "Rental Agreement",
             date: new Date().toISOString().split('T')[0],
-            file: { name: `contract_${reservation.customer.toLowerCase().replace(/\s+/g, '_')}.pdf` },
-            status: 'Signed',
+            file: { name: `contract_${reservation.id}.pdf` },
+            status: 'Signed' as const,
             reservationId: reservation.id,
-            formData: formData, // include all the new details
+            formData: { ...formData, ...reservation },
         };
 
-        const existingContracts = JSON.parse(localStorage.getItem('signedContracts') || '[]');
-        localStorage.setItem('signedContracts', JSON.stringify([...existingContracts, newContract]));
-        
-        localStorage.removeItem('pendingReservation');
-        
-        toast({
-            title: "Contrato Confirmado",
-            description: "El contrato ha sido firmado y registrado con éxito.",
-        });
-        
-        setTimeout(() => {
+        try {
+            // 1. Save reservation to Firestore
+            const resRef = doc(db, 'reservations', reservation.id);
+            await setDoc(resRef, { ...reservation, status: 'Upcoming' });
+
+            // 2. Save contract to Firestore
+            const contractRef = doc(db, 'contracts', contractId);
+            await setDoc(contractRef, newContract);
+
+            // 3. Update vehicle status to 'Rented'
+            const vehicleRef = doc(db, 'vehicles', reservation.vehicleId);
+            await updateDoc(vehicleRef, { status: 'Rented' });
+            
+            localStorage.removeItem('pendingReservation');
+            
+            toast({
+                title: "Contrato Confirmado",
+                description: "La reserva y el contrato se han registrado con éxito.",
+            });
+            
             setSubmissionStatus('success');
-        }, 1000);
+
+        } catch (error) {
+            console.error("Error confirming contract:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al Guardar',
+                description: 'No se pudo guardar la reserva o el contrato. Por favor, inténtelo de nuevo.'
+            });
+            setSubmissionStatus('idle');
+        }
     }
     
     if (loading) {
@@ -153,8 +169,7 @@ export default function ContractForm() {
     }
 
     if (!reservation && submissionStatus !== 'success') {
-        // You can show a loading state here
-        return <div className="flex h-screen items-center justify-center">No se encontró la reserva. Por favor, vuelva a intentarlo.</div>;
+        return <div className="flex h-screen items-center justify-center">No se encontró la reserva pendiente. Por favor, vuelva a la página de inicio.</div>;
     }
     
     if (!vehicle && submissionStatus !== 'success') {
@@ -288,6 +303,7 @@ export default function ContractForm() {
                                     </AlertDialogContent>
                                     <AlertDialogTrigger asChild>
                                         <Button className="w-full sm:w-auto" disabled={!isFormValid || isSubmitting}>
+                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             {isSubmitting ? 'Procesando...' : 'Confirmar y Firmar'}
                                         </Button>
                                     </AlertDialogTrigger>
@@ -302,7 +318,7 @@ export default function ContractForm() {
                                 ¡Gracias, <span className="font-semibold">{customerNameOnSuccess || 'cliente'}</span>! Tu reserva <span className="font-semibold">{reservationId}</span> ha sido creada exitosamente.
                             </p>
                             <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                                Hemos enviado una copia del contrato y todos los detalles a tu correo electrónico. En el futuro, podrás acceder a todas tus reservas desde nuestro portal de clientes.
+                                Hemos guardado tu contrato. En breve nos pondremos en contacto contigo para los siguientes pasos.
                             </p>
                             <Button asChild className="mt-6">
                                 <Link href="/">

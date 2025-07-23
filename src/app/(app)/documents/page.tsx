@@ -6,33 +6,27 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UploadCloud, MoreHorizontal, Trash2, Download, FileText } from 'lucide-react';
+import { UploadCloud, MoreHorizontal, Trash2, Download, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-
-const getContractsFromStorage = () => {
-    if (typeof window === 'undefined') return [];
-    const savedContracts = localStorage.getItem('signedContracts');
-    return savedContracts ? JSON.parse(savedContracts) : [];
-};
+import { useAuth } from '@/hooks/use-auth';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const initialDocuments = [
-  { id: 1, customer: 'Liam Johnson', type: "Driver's License", date: '2024-07-15', file: { name: 'liam_license.pdf' }, status: 'Verified' },
-  { id: 2, customer: 'Olivia Smith', type: "Passport", date: '2024-07-16', file: { name: 'olivia_passport.pdf' }, status: 'Verified' },
-  { id: 3, customer: 'Noah Williams', type: "Driver's License", date: '2024-07-20', file: { name: 'noah_license.jpg' }, status: 'Pending' },
-  // Agreements are now loaded dynamically
-  { id: 5, customer: 'Ava Jones', type: "ID Card", date: '2024-07-22', file: { name: 'ava_id.pdf' }, status: 'Rejected' },
+  // This is now just for visual reference, data will come from Firestore
 ];
 
 type Document = {
-    id: number | string;
+    id: string;
     customer: string;
     type: string;
     date: string;
-    file: File | { name: string };
+    fileUrl: string;
+    fileName: string;
     status: 'Verified' | 'Pending' | 'Rejected' | 'Signed';
     reservationId?: string;
 }
@@ -51,16 +45,54 @@ const emptyDocument: NewDocument = {
 
 
 export default function DocumentsPage() {
+    const { db, storage } = useAuth();
     const [documents, setDocuments] = React.useState<Document[]>([]);
     const [newDocument, setNewDocument] = React.useState<NewDocument>(emptyDocument);
     const { toast } = useToast();
+    const [loading, setLoading] = React.useState(true);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    const fetchDocs = React.useCallback(() => {
+        if(!db) return;
+        setLoading(true);
+
+        const manualDocsQuery = query(collection(db, "documents"), orderBy("date", "desc"));
+        const contractsQuery = query(collection(db, "contracts"), orderBy("date", "desc"));
+
+        const unsubDocs = onSnapshot(manualDocsQuery, (docSnapshot) => {
+            const manualDocsData = docSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document));
+            
+            const unsubContracts = onSnapshot(contractsQuery, (contractSnapshot) => {
+                const contractsData = contractSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        customer: data.customer,
+                        type: data.type,
+                        date: data.date,
+                        fileUrl: '', // Contracts are generated, no direct URL needed for download yet
+                        fileName: data.file.name,
+                        status: data.status,
+                        reservationId: data.reservationId,
+                    } as Document;
+                });
+
+                const combined = [...manualDocsData, ...contractsData];
+                const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+                unique.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setDocuments(unique);
+                setLoading(false);
+            });
+             return () => unsubContracts();
+        });
+        return () => unsubDocs();
+    }, [db]);
+
 
     React.useEffect(() => {
-        const storedContracts = getContractsFromStorage().map((c: any) => ({...c, id: c.id})); // ensure unique ids
-        const combinedDocs = [...initialDocuments, ...storedContracts];
-        const uniqueDocs = Array.from(new Map(combinedDocs.map(doc => [doc.id, doc])).values());
-        setDocuments(uniqueDocs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    }, []);
+        const unsubscribe = fetchDocs();
+        return () => unsubscribe && unsubscribe();
+    }, [fetchDocs]);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,9 +109,9 @@ export default function DocumentsPage() {
         setNewDocument(prev => ({ ...prev, file }));
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!newDocument.customer || !newDocument.type || !newDocument.file) {
+        if(!newDocument.customer || !newDocument.type || !newDocument.file || !db || !storage) {
              toast({
                 variant: "destructive",
                 title: "Incomplete form",
@@ -87,35 +119,56 @@ export default function DocumentsPage() {
             })
             return;
         }
+        setIsSubmitting(true);
+        
+        try {
+            // Upload file to storage
+            const fileRef = ref(storage, `documents/${Date.now()}_${newDocument.file.name}`);
+            await uploadBytes(fileRef, newDocument.file);
+            const fileUrl = await getDownloadURL(fileRef);
 
-        const documentToAdd: Document = {
-            id: documents.length > 0 ? Math.max(...documents.map(d => typeof d.id === 'number' ? d.id : 0)) + 1 : 1,
-            customer: newDocument.customer,
-            type: newDocument.type,
-            file: newDocument.file,
-            date: new Date().toISOString().split('T')[0],
-            status: 'Pending',
+            // Add document metadata to Firestore
+            const documentToAdd = {
+                customer: newDocument.customer,
+                type: newDocument.type,
+                fileUrl: fileUrl,
+                fileName: newDocument.file.name,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Pending' as const,
+            }
+            await addDoc(collection(db, 'documents'), documentToAdd);
+
+            toast({
+                title: "Document uploaded!",
+                description: `${newDocument.file.name} for ${newDocument.customer} has been added for verification.`,
+            })
+
+            setNewDocument(emptyDocument);
+            const fileInput = document.getElementById('file') as HTMLInputElement;
+            if(fileInput) fileInput.value = '';
+
+        } catch (error) {
+            console.error("Error uploading document:", error);
+            toast({ variant: 'destructive', title: "Upload Error", description: "Failed to upload document."});
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setDocuments(prev => [documentToAdd, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        setNewDocument(emptyDocument);
-        
-        // Reset file input
-        const fileInput = document.getElementById('file') as HTMLInputElement;
-        if(fileInput) fileInput.value = '';
-        
-        toast({
-            title: "Document uploaded!",
-            description: `${(documentToAdd.file as File).name} for ${documentToAdd.customer} has been added for verification.`,
-        })
     }
 
-    const handleDelete = (id: number | string) => {
-        setDocuments(prev => prev.filter(doc => doc.id !== id));
-        toast({
-            title: "Document deleted",
-            description: "The document has been removed from the list.",
-        })
+    const handleDelete = async (docId: string, type: string) => {
+        if(!db) return;
+        const collectionName = type === 'Rental Agreement' ? 'contracts' : 'documents';
+        
+        try {
+            await deleteDoc(doc(db, collectionName, docId));
+            toast({
+                title: "Document deleted",
+                description: "The document has been removed from the list.",
+            })
+        } catch (error) {
+             console.error("Error deleting document:", error);
+             toast({ variant: 'destructive', title: "Delete Error", description: "Failed to delete document."});
+        }
     }
     
      const getStatusVariant = (status: string) => {
@@ -150,11 +203,11 @@ export default function DocumentsPage() {
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             <div>
                                 <Label htmlFor="customer">Customer Name</Label>
-                                <Input id="customer" placeholder="John Doe" value={newDocument.customer} onChange={handleInputChange} required />
+                                <Input id="customer" placeholder="John Doe" value={newDocument.customer} onChange={handleInputChange} required disabled={isSubmitting}/>
                             </div>
                             <div>
                                 <Label htmlFor="type">Document Type</Label>
-                                <Select onValueChange={handleSelectChange} value={newDocument.type} required>
+                                <Select onValueChange={handleSelectChange} value={newDocument.type} required disabled={isSubmitting}>
                                     <SelectTrigger id="type">
                                         <SelectValue placeholder="Select document type" />
                                     </SelectTrigger>
@@ -168,10 +221,10 @@ export default function DocumentsPage() {
                             </div>
                             <div>
                                 <Label htmlFor="file">File</Label>
-                                <Input id="file" type="file" onChange={handleFileChange} required />
+                                <Input id="file" type="file" onChange={handleFileChange} required disabled={isSubmitting}/>
                             </div>
-                            <Button className="w-full" type="submit">
-                                <UploadCloud className="mr-2 h-4 w-4" />
+                            <Button className="w-full" type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
                                 Upload for Verification
                             </Button>
                         </form>
@@ -179,10 +232,23 @@ export default function DocumentsPage() {
                 </Card>
                 <Card className="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>All Documents</CardTitle>
-                        <CardDescription>Browse, verify, and manage all customer documents and signed contracts.</CardDescription>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>All Documents</CardTitle>
+                                <CardDescription>Browse, verify, and manage all customer documents and signed contracts.</CardDescription>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={fetchDocs} disabled={loading}>
+                                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                Refresh
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
+                         {loading ? (
+                             <div className="flex justify-center items-center h-48">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                             </div>
+                        ) : (
                         <Table>
                              <TableHeader>
                                 <TableRow>
@@ -229,12 +295,15 @@ export default function DocumentsPage() {
                                                                 View Related Reservation
                                                           </Link>
                                                         </DropdownMenuItem>
-                                                    ) : null}
-                                                    <DropdownMenuItem className="gap-2" onClick={() => alert('Download would start for ' + (doc.file as { name: string }).name)}>
-                                                        <Download className="h-4 w-4" />
-                                                        Download
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={() => handleDelete(doc.id)}>
+                                                    ) : (
+                                                        <DropdownMenuItem className="gap-2" asChild>
+                                                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                                            <Download className="h-4 w-4" />
+                                                            Download
+                                                          </a>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={() => handleDelete(doc.id, doc.type)}>
                                                         <Trash2 className="h-4 w-4" />
                                                         Delete
                                                     </DropdownMenuItem>
@@ -245,6 +314,7 @@ export default function DocumentsPage() {
                                 ))}
                             </TableBody>
                         </Table>
+                         )}
                     </CardContent>
                 </Card>
             </div>

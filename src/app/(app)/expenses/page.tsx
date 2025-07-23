@@ -5,16 +5,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, CheckCircle } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { PlusCircle, MoreHorizontal, Edit, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { initialExpenses } from '@/lib/data';
+import { useAuth } from '@/hooks/use-auth';
+import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy } from 'firebase/firestore';
 
-type Expense = typeof initialExpenses[0];
+type Expense = {
+    id: string;
+    description: string;
+    category: 'Maintenance' | 'Fuel' | 'Insurance' | 'Salaries' | 'Office Supplies' | 'Utilities' | 'Other';
+    amount: string;
+    date: string;
+    status: 'Pending' | 'Paid' | 'Overdue';
+}
 type NewExpense = Omit<Expense, 'id'>;
 
 const emptyExpense: NewExpense = {
@@ -27,12 +35,36 @@ const emptyExpense: NewExpense = {
 
 export default function ExpensesPage() {
     const { toast } = useToast();
-    const [expenses, setExpenses] = React.useState(initialExpenses);
+    const { db } = useAuth();
+    const [expenses, setExpenses] = React.useState<Expense[]>([]);
+    const [loading, setLoading] = React.useState(true);
     const [open, setOpen] = React.useState(false);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [editingExpense, setEditingExpense] = React.useState<Expense | null>(null);
     const [expenseData, setExpenseData] = React.useState<NewExpense>(emptyExpense);
 
     const isEditing = editingExpense !== null;
+
+    const fetchExpenses = React.useCallback(() => {
+        if (!db) return;
+        setLoading(true);
+        const q = query(collection(db, 'expenses'), orderBy('date', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const expensesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+            setExpenses(expensesData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Failed to fetch expenses:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch expenses.' });
+            setLoading(false);
+        });
+        return unsubscribe;
+    }, [db, toast]);
+
+    React.useEffect(() => {
+        const unsubscribe = fetchExpenses();
+        return () => unsubscribe && unsubscribe();
+    }, [fetchExpenses]);
 
     const handleOpenDialog = (expense: Expense | null = null) => {
         if (expense) {
@@ -51,43 +83,56 @@ export default function ExpensesPage() {
     };
 
     const handleSelectChange = (id: keyof NewExpense) => (value: string) => {
-        setExpenseData(prev => ({ ...prev, [id]: value }));
+        setExpenseData(prev => ({ ...prev, [id]: value as any }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!db) return;
+        setIsSubmitting(true);
 
-        if (isEditing && editingExpense) {
-            setExpenses(prev => prev.map(exp => 
-                exp.id === editingExpense.id ? { ...editingExpense, ...expenseData, amount: parseFloat(expenseData.amount).toFixed(2) } : exp));
-            toast({ title: 'Expense Updated', description: 'The expense has been successfully updated.' });
-        } else {
-            const newId = `EXP-${Date.now()}`;
-            const expenseToAdd: Expense = {
-                id: newId,
-                ...expenseData,
-                amount: parseFloat(expenseData.amount).toFixed(2),
-            };
-            setExpenses(prev => [expenseToAdd, ...prev]);
-            toast({ title: 'Expense Added', description: 'The new expense has been recorded.' });
+        const dataToSave = {
+            ...expenseData,
+            amount: parseFloat(expenseData.amount).toFixed(2),
+        };
+
+        try {
+            if (isEditing && editingExpense) {
+                const expenseRef = doc(db, 'expenses', editingExpense.id);
+                await updateDoc(expenseRef, dataToSave);
+                toast({ title: 'Expense Updated', description: 'The expense has been successfully updated.' });
+            } else {
+                await addDoc(collection(db, 'expenses'), dataToSave);
+                toast({ title: 'Expense Added', description: 'The new expense has been recorded.' });
+            }
+            setOpen(false);
+        } catch (error) {
+            console.error("Error saving expense:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to save expense record.' });
+        } finally {
+            setIsSubmitting(false);
         }
-        setOpen(false);
     };
     
-    const handleMarkAsPaid = (expenseId: string) => {
-        setExpenses(prev => prev.map(exp => 
-            exp.id === expenseId ? { ...exp, status: 'Paid' } : exp
-        ));
-        toast({
-            title: "Expense Paid",
-            description: `Expense ${expenseId} has been marked as paid.`,
-        });
+    const handleMarkAsPaid = async (expenseId: string) => {
+        if(!db) return;
+        const expenseRef = doc(db, 'expenses', expenseId);
+        try {
+            await updateDoc(expenseRef, { status: 'Paid' });
+            toast({
+                title: "Expense Paid",
+                description: `Expense has been marked as paid.`,
+            });
+        } catch (error) {
+             toast({ variant: 'destructive', title: 'Error', description: 'Failed to update expense status.' });
+        }
     };
 
     React.useEffect(() => {
         if (!open) {
             setEditingExpense(null);
             setExpenseData(emptyExpense);
+            setIsSubmitting(false);
         }
     }, [open]);
 
@@ -109,10 +154,16 @@ export default function ExpensesPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Expenses</h1>
-                <Button onClick={() => handleOpenDialog()}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Expense
-                </Button>
+                 <div className="flex items-center gap-2">
+                     <Button variant="outline" size="sm" onClick={fetchExpenses} disabled={loading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+                    <Button onClick={() => handleOpenDialog()}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Expense
+                    </Button>
+                </div>
             </div>
             <Card>
                 <CardHeader>
@@ -120,6 +171,11 @@ export default function ExpensesPage() {
                     <CardDescription>Track and manage all company expenditures.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {loading ? (
+                         <div className="flex justify-center items-center h-48">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                         </div>
+                    ) : (
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -170,6 +226,7 @@ export default function ExpensesPage() {
                             ))}
                         </TableBody>
                     </Table>
+                    )}
                 </CardContent>
             </Card>
 
@@ -181,11 +238,11 @@ export default function ExpensesPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <Label htmlFor="description">Description</Label>
-                            <Input id="description" value={expenseData.description} onChange={handleInputChange} required />
+                            <Input id="description" value={expenseData.description} onChange={handleInputChange} required disabled={isSubmitting}/>
                         </div>
                         <div>
                             <Label htmlFor="category">Category</Label>
-                            <Select onValueChange={(value) => handleSelectChange('category')(value)} value={expenseData.category} required>
+                            <Select onValueChange={(value) => handleSelectChange('category')(value)} value={expenseData.category} required disabled={isSubmitting}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a category" />
                                 </SelectTrigger>
@@ -203,16 +260,16 @@ export default function ExpensesPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="amount">Amount ($)</Label>
-                                <Input id="amount" type="number" step="0.01" value={expenseData.amount} onChange={handleInputChange} required />
+                                <Input id="amount" type="number" step="0.01" value={expenseData.amount} onChange={handleInputChange} required disabled={isSubmitting}/>
                             </div>
                             <div>
                                 <Label htmlFor="date">Date</Label>
-                                <Input id="date" type="date" value={expenseData.date} onChange={handleInputChange} required />
+                                <Input id="date" type="date" value={expenseData.date} onChange={handleInputChange} required disabled={isSubmitting}/>
                             </div>
                         </div>
                          <div>
                             <Label htmlFor="status">Status</Label>
-                            <Select onValueChange={(value) => handleSelectChange('status')(value)} value={expenseData.status} required>
+                            <Select onValueChange={(value) => handleSelectChange('status')(value)} value={expenseData.status} required disabled={isSubmitting}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a status" />
                                 </SelectTrigger>
@@ -225,9 +282,12 @@ export default function ExpensesPage() {
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
-                                <Button type="button" variant="secondary">Cancel</Button>
+                                <Button type="button" variant="secondary" disabled={isSubmitting}>Cancel</Button>
                             </DialogClose>
-                            <Button type="submit">{isEditing ? 'Save Changes' : 'Add Expense'}</Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                {isEditing ? 'Save Changes' : 'Add Expense'}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
