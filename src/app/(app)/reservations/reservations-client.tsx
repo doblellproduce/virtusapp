@@ -70,7 +70,21 @@ export default function ReservationsClient() {
 
     const isEditing = editingReservation !== null;
     
-    const availableVehicles = vehicles.filter(v => v.status === 'Available');
+    const vehiclesForDropdown = React.useMemo(() => {
+        if (isEditing && editingReservation) {
+            const assignedVehicle = vehicles.find(v => v.id === editingReservation.vehicleId);
+            const availableVehicles = vehicles.filter(v => v.status === 'Available');
+            
+            // If the assigned vehicle is not already in the available list, add it.
+            if (assignedVehicle && !availableVehicles.some(v => v.id === assignedVehicle.id)) {
+                return [assignedVehicle, ...availableVehicles];
+            }
+            return availableVehicles;
+        }
+        // For new reservations, only show available vehicles.
+        return vehicles.filter(v => v.status === 'Available');
+    }, [vehicles, isEditing, editingReservation]);
+
 
     const handleOpenDialog = (reservation: Reservation | null = null) => {
         if (reservation) {
@@ -328,22 +342,12 @@ export default function ReservationsClient() {
                                     <SelectValue placeholder="Select a vehicle" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {isEditing && editingReservation ? (
-                                        <>
-                                            {availableVehicles.map(v => (
-                                                <SelectItem key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</SelectItem>
-                                            ))}
-                                            {!availableVehicles.find(v => v.id === editingReservation.vehicleId) && (
-                                                <SelectItem key={editingReservation.vehicleId} value={editingReservation.vehicleId}>
-                                                   (Not Available) {editingReservation.vehicle}
-                                                </SelectItem>
-                                            )}
-                                        </>
-                                    ) : (
-                                        availableVehicles.map(v => (
-                                            <SelectItem key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</SelectItem>
-                                        ))
-                                    )}
+                                    {vehiclesForDropdown.map(v => (
+                                        <SelectItem key={v.id} value={v.id}>
+                                            {v.make} {v.model} ({v.plate})
+                                            {v.status !== 'Available' && <span className="text-muted-foreground ml-2">({v.status})</span>}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
