@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Car, User, Gauge, GitBranch, Loader2 } from 'lucide-react';
+import { ArrowRight, Car, Users, Gauge, GitBranch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import type { Vehicle } from '@/lib/types';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
