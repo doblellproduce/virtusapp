@@ -1,7 +1,5 @@
 
 
-// In a real application, this data would come from a database.
-
 export type UserRole = 'Admin' | 'Supervisor' | 'Secretary' | 'SuperAdmin';
 
 export type UserProfile = {

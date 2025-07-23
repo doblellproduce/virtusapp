@@ -10,9 +10,9 @@ import {
     type User,
     getAuth
 } from 'firebase/auth';
-import { doc, onSnapshot, getFirestore, type Firestore, addDoc, collection, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-import type { UserProfile, UserRole, ActivityLog } from '@/lib/types';
+import type { UserProfile, UserRole } from '@/lib/types';
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 
 // This is the public Firebase config for the client-side
@@ -34,19 +34,12 @@ interface FirebaseServices {
   storage: FirebaseStorage | null;
 }
 
-type LogActivity = (
-    action: ActivityLog['action'], 
-    entityType: ActivityLog['entityType'], 
-    entityId: ActivityLog['entityId'], 
-    details: ActivityLog['details']
-) => Promise<void>;
-
 interface AuthContextType extends FirebaseServices {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
   role: UserRole | null;
-  login: (email: string, pass: string) => Promise<any>;
+  login: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
 }
@@ -88,14 +81,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!firebaseServices.auth || !firebaseServices.db) {
       // If services are not yet initialized, keep loading.
-      // The previous useEffect will trigger a re-render once they are.
       return;
     }
 
     const unsubscribeAuth = onAuthStateChanged(firebaseServices.auth, async (authUser) => {
       setUser(authUser);
       if (authUser) {
-        // Now fetch profile
+        // Fetch profile
         const userDocRef = doc(firebaseServices.db as Firestore, 'users', authUser.uid);
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -131,7 +123,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!firebaseServices.auth) {
         throw new Error("Firebase Auth is not initialized.");
     }
-
     // 1. Client-side sign-in
     const userCredential = await signInWithEmailAndPassword(firebaseServices.auth, email, pass);
     const idToken = await userCredential.user.getIdToken();
@@ -143,8 +134,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         body: JSON.stringify({ idToken }),
     });
 
-    const result = await response.json();
     if (!response.ok) {
+        const result = await response.json();
         throw new Error(result.error || "Server-side session creation failed.");
     }
   };
