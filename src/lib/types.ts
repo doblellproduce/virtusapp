@@ -12,6 +12,17 @@ export type UserProfile = {
     photoURL?: string;
 };
 
+export type Customer = {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    idOrPassport: string;
+    license: string;
+    address: string;
+    createdAt: string; // ISO string
+};
+
 export type Vehicle = {
     id: string; // Changed to string to match Firestore document IDs
     make: string;
@@ -34,7 +45,8 @@ export type Vehicle = {
 
 export type Reservation = {
     id: string;
-    customer: string;
+    customerId: string;
+    customerName: string;
     vehicleId: string; // Changed to string to match Firestore document IDs
     vehicle: string;
     pickupDate: string;
@@ -83,7 +95,7 @@ export type ActivityLog = {
     timestamp: string; // Should be an ISO string
     user: string; // User's name or email
     action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel';
-    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance';
+    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer';
     entityId: string;
     details: string;
 };

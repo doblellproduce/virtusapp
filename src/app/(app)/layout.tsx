@@ -29,6 +29,7 @@ import {
   Loader2,
   History,
   BarChartHorizontal,
+  UserCog,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -52,8 +53,8 @@ const Logo = () => (
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/reservations', label: 'Reservations', icon: Calendar, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/customers', label: 'Customers', icon: Users, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['Admin', 'Supervisor', 'Secretary'] },
-  { href: '/users', label: 'Users', icon: Users, roles: ['Admin'] },
   { href: '/documents', label: 'Documents', icon: FileUp, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/invoices', label: 'Invoices', icon: CreditCard, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/expenses', label: 'Expenses', icon: Wrench, roles: ['Admin', 'Supervisor', 'Secretary'] },
@@ -62,6 +63,7 @@ const menuItems = [
   { href: '/smart-reply', label: 'Smart Reply', icon: Sparkles, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/reports', label: 'Reports', icon: BarChartHorizontal, roles: ['Admin', 'Supervisor'] },
   { href: '/logs', label: 'Activity Log', icon: History, roles: ['Admin', 'Supervisor'] },
+  { href: '/users', label: 'Employees', icon: UserCog, roles: ['Admin'] },
 ];
 
 export default function AdminLayout({

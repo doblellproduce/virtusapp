@@ -15,14 +15,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
-import type { Reservation, Vehicle } from '@/lib/types';
+import type { Reservation, Vehicle, Customer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { onSnapshot, collection, addDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { onSnapshot, collection, addDoc, doc, updateDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { CustomerCombobox } from '@/components/customer-combobox';
 
-type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle'>;
+type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'customer'>;
 
 const emptyReservation: NewReservation = {
-    customer: '',
+    customerId: '',
+    customerName: '',
     vehicleId: '',
     pickupDate: '',
     dropoffDate: '',
@@ -36,6 +38,7 @@ export default function ReservationsClient() {
 
     const [reservations, setReservations] = React.useState<Reservation[]>([]);
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
+    const [customers, setCustomers] = React.useState<Customer[]>([]);
     const [open, setOpen] = React.useState(false);
     const [editingReservation, setEditingReservation] = React.useState<Reservation | null>(null);
     const [reservationData, setReservationData] = React.useState<NewReservation>(emptyReservation);
@@ -52,9 +55,14 @@ export default function ReservationsClient() {
             const reservationsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
             setReservations(reservationsData);
         });
+        const unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
+            const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+            setCustomers(customersData);
+        });
         return () => {
             unsubVehicles();
             unsubReservations();
+            unsubCustomers();
         };
     }, [db]);
 
@@ -83,7 +91,6 @@ export default function ReservationsClient() {
         return vehicles.filter(v => v.status === 'Available');
     }, [vehicles, isEditing, editingReservation]);
 
-
     const handleOpenDialog = (reservation: Reservation | null = null) => {
         if (reservation) {
             setEditingReservation(reservation);
@@ -104,6 +111,13 @@ export default function ReservationsClient() {
          setReservationData(prev => ({ ...prev, [id]: value as any }));
     };
 
+    const handleCustomerSelect = (customerId: string) => {
+        const customer = customers.find(c => c.id === customerId);
+        if (customer) {
+            setReservationData(prev => ({...prev, customerId: customer.id, customerName: customer.name}));
+        }
+    };
+
     const generateNewReservationId = () => {
         const maxId = reservations.reduce((max, res) => {
             const idNum = parseInt(res.id.split('-')[1]);
@@ -112,9 +126,48 @@ export default function ReservationsClient() {
         return `RES-${String(maxId + 1).padStart(3, '0')}`;
     };
 
+    const checkVehicleAvailability = async (vehicleId: string, pickup: string, dropoff: string, excludeReservationId?: string) => {
+        if(!db) return true;
+        
+        let reservationsRef = query(
+            collection(db, "reservations"),
+            where("vehicleId", "==", vehicleId),
+            where("status", "in", ["Upcoming", "Active"])
+        );
+        const querySnapshot = await getDocs(reservationsRef);
+        const conflictingReservations = querySnapshot.docs
+            .map(doc => ({id: doc.id, ...doc.data()} as Reservation))
+            .filter(res => res.id !== excludeReservationId);
+
+        for (const res of conflictingReservations) {
+            const existingPickup = new Date(res.pickupDate);
+            const existingDropoff = new Date(res.dropoffDate);
+            const newPickup = new Date(pickup);
+            const newDropoff = new Date(dropoff);
+            
+            // Check for overlap
+            if (newPickup < existingDropoff && newDropoff > existingPickup) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Booking Conflict',
+                    description: `This vehicle is already booked from ${res.pickupDate} to ${res.dropoffDate}. Please choose a different vehicle or date range.`,
+                    duration: 5000,
+                });
+                return false;
+            }
+        }
+        return true;
+    };
+
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!db) return;
+
+        const isAvailable = await checkVehicleAvailability(reservationData.vehicleId, reservationData.pickupDate, reservationData.dropoffDate, isEditing ? editingReservation?.id : undefined);
+        if (!isAvailable) {
+            return; // Stop submission if there's a conflict
+        }
 
         const agentName = user?.displayName ?? 'System';
         const selectedVehicle = vehicles.find(v => v.id === reservationData.vehicleId);
@@ -137,13 +190,16 @@ export default function ReservationsClient() {
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
             });
 
-            await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customer}.`);
+            await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customerName}.`);
 
             if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
                 const oldVehicleRef = doc(db, 'vehicles', originalVehicleId);
                 await updateDoc(oldVehicleRef, { status: 'Available' });
+                await logActivity('Update', 'Vehicle', originalVehicleId, `Status set to Available (reservation updated).`);
+
                 const newVehicleRef = doc(db, 'vehicles', selectedVehicle.id);
                 await updateDoc(newVehicleRef, { status: 'Rented' });
+                await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (reservation updated).`);
             }
 
             toast({ title: "Reservation Updated" });
@@ -155,10 +211,11 @@ export default function ReservationsClient() {
                 agent: agentName,
             };
             await setDoc(doc(db, 'reservations', newId), reservationToAdd);
-            await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customer} with vehicle ${reservationToAdd.vehicle}`);
+            await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customerName} with vehicle ${reservationToAdd.vehicle}`);
 
             const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
             await updateDoc(vehicleRef, { status: 'Rented' });
+            await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (new reservation).`);
 
             toast({ title: "Reservation Created" });
         }
@@ -180,7 +237,8 @@ export default function ReservationsClient() {
         const vehicleRef = doc(db, 'vehicles', reservation.vehicleId);
         await updateDoc(vehicleRef, { status: 'Available' });
         
-        await logActivity('Cancel', 'Reservation', reservation.id, `Cancelled reservation for ${reservation.customer}.`);
+        await logActivity('Cancel', 'Reservation', reservation.id, `Cancelled reservation for ${reservation.customerName}.`);
+        await logActivity('Update', 'Vehicle', reservation.vehicleId, `Status set to Available (reservation cancelled).`);
 
         toast({
             title: "Reservation Cancelled",
@@ -196,12 +254,13 @@ export default function ReservationsClient() {
         
         const newInvoice = {
             id: newInvoiceId,
-            customer: reservation.customer,
+            customer: reservation.customerName,
             date: new Date().toISOString().split('T')[0],
             amount: String(reservation.totalCost?.toFixed(2) || '0.00'),
             status: 'Draft' as const,
             createdBy: agentName,
             paymentMethod: 'N/A' as const,
+            reservationId: reservation.id, // <-- Added reference ID
         };
 
         await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice);
@@ -230,7 +289,7 @@ export default function ReservationsClient() {
     }
     
     const filteredReservations = reservations.filter(res => 
-        res.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        res.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         res.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -275,7 +334,7 @@ export default function ReservationsClient() {
                             {filteredReservations.map((res) => (
                                 <TableRow key={res.id} className={highlightedRes === res.id ? 'bg-primary/10 transition-all duration-500' : ''}>
                                     <TableCell className="font-medium">{res.id}</TableCell>
-                                    <TableCell>{res.customer}</TableCell>
+                                    <TableCell>{res.customerName}</TableCell>
                                     <TableCell>{res.vehicle}</TableCell>
                                     <TableCell>{res.pickupDate}</TableCell>
                                     <TableCell>{res.dropoffDate}</TableCell>
@@ -321,7 +380,7 @@ export default function ReservationsClient() {
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This will cancel the reservation for <span className="font-semibold">{res.customer}</span> ({res.id}). This action cannot be undone.
+                                                                This will cancel the reservation for <span className="font-semibold">{res.customerName}</span> ({res.id}). This action cannot be undone.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
@@ -352,8 +411,12 @@ export default function ReservationsClient() {
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <Label htmlFor="customer">Customer Name</Label>
-                            <Input id="customer" value={reservationData.customer} onChange={handleInputChange} required />
+                            <Label htmlFor="customer">Customer</Label>
+                            <CustomerCombobox
+                                customers={customers}
+                                onCustomerSelect={handleCustomerSelect}
+                                selectedCustomerId={reservationData.customerId}
+                            />
                         </div>
                         <div>
                             <Label htmlFor="vehicleId">Vehicle</Label>
