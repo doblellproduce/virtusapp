@@ -15,9 +15,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { collection, doc, updateDoc, addDoc, query, orderBy, getDocs } from 'firebase/firestore';
-import type { Vehicle, MaintenanceLog } from '@/lib/types';
+import type { Vehicle, MaintenanceLog, Expense } from '@/lib/types';
 
-type NewMaintenanceLog = Omit<MaintenanceLog, 'id' | 'vehicleName'>;
+type NewMaintenanceLog = Omit<MaintenanceLog, 'id' | 'vehicleName' | 'createdBy'>;
 
 const emptyLog: NewMaintenanceLog = {
     vehicleId: '',
@@ -29,7 +29,7 @@ const emptyLog: NewMaintenanceLog = {
 
 export default function MaintenancePage() {
     const { toast } = useToast();
-    const { db } = useAuth();
+    const { db, userProfile, logActivity } = useAuth();
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
     const [logs, setLogs] = React.useState<MaintenanceLog[]>([]);
     const [loading, setLoading] = React.useState(true);
@@ -78,8 +78,8 @@ export default function MaintenancePage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Database not available.' });
+        if (!db || !userProfile) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Database not available or user not logged in.' });
             return;
         }
         setIsSubmitting(true);
@@ -94,12 +94,28 @@ export default function MaintenancePage() {
         const newLog: Omit<MaintenanceLog, 'id'> = {
             ...logData,
             vehicleName: `${selectedVehicle.make} ${selectedVehicle.model}`,
+            createdBy: userProfile.name,
         };
         
         try {
             // Add the new log to the maintenanceLogs collection
-            await addDoc(collection(db, 'maintenanceLogs'), newLog);
+            const logDocRef = await addDoc(collection(db, 'maintenanceLogs'), newLog);
+            await logActivity('Create', 'Maintenance', logDocRef.id, `Logged ${newLog.serviceType} for ${newLog.vehicleName}`);
             
+            // If there's a cost, create an expense automatically
+            if (parseFloat(newLog.cost) > 0) {
+                const newExpense: Omit<Expense, 'id'> = {
+                    description: `Maintenance: ${newLog.serviceType} for ${newLog.vehicleName}`,
+                    category: 'Maintenance',
+                    amount: newLog.cost,
+                    date: newLog.date,
+                    status: 'Paid', // Assuming maintenance is paid immediately
+                    createdBy: userProfile.name,
+                };
+                const expenseDocRef = await addDoc(collection(db, 'expenses'), newExpense);
+                await logActivity('Create', 'Expense', expenseDocRef.id, `Auto-created expense for maintenance log ${logDocRef.id}`);
+            }
+
             // Update the vehicle's status to 'Maintenance' and its last service date
             const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
             await updateDoc(vehicleRef, { 
@@ -208,6 +224,7 @@ export default function MaintenancePage() {
                                 <TableHead>Vehicle</TableHead>
                                 <TableHead>Service Type</TableHead>
                                 <TableHead>Cost</TableHead>
+                                <TableHead>Created By</TableHead>
                                 <TableHead>Notes</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -218,6 +235,7 @@ export default function MaintenancePage() {
                                     <TableCell className="font-medium">{log.vehicleName}</TableCell>
                                     <TableCell>{log.serviceType}</TableCell>
                                     <TableCell>${log.cost}</TableCell>
+                                    <TableCell>{log.createdBy}</TableCell>
                                     <TableCell className="max-w-[300px] truncate">{log.notes}</TableCell>
                                 </TableRow>
                             ))}

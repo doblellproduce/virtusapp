@@ -55,6 +55,16 @@ export type Invoice = {
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
 };
 
+export type Expense = {
+    id: string;
+    description: string;
+    category: 'Maintenance' | 'Fuel' | 'Insurance' | 'Salaries' | 'Office Supplies' | 'Utilities' | 'Other';
+    amount: string;
+    date: string;
+    status: 'Pending' | 'Paid' | 'Overdue';
+    createdBy: string;
+};
+
 export type MaintenanceLog = {
     id: string;
     vehicleId: string; // Changed to string to match Firestore document IDs
@@ -63,6 +73,7 @@ export type MaintenanceLog = {
     serviceType: string;
     cost: string;
     notes: string;
+    createdBy: string;
 };
 
 export type ActivityLog = {
@@ -70,7 +81,7 @@ export type ActivityLog = {
     timestamp: string; // Should be an ISO string
     user: string; // User's name or email
     action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel';
-    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth';
+    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance';
     entityId: string;
     details: string;
 };

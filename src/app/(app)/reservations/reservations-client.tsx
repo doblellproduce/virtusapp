@@ -30,7 +30,7 @@ const emptyReservation: NewReservation = {
 };
 
 export default function ReservationsClient() {
-    const { user, db } = useAuth();
+    const { user, db, logActivity } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -75,13 +75,11 @@ export default function ReservationsClient() {
             const assignedVehicle = vehicles.find(v => v.id === editingReservation.vehicleId);
             const availableVehicles = vehicles.filter(v => v.status === 'Available');
             
-            // If the assigned vehicle is not already in the available list, add it.
             if (assignedVehicle && !availableVehicles.some(v => v.id === assignedVehicle.id)) {
                 return [assignedVehicle, ...availableVehicles];
             }
             return availableVehicles;
         }
-        // For new reservations, only show available vehicles.
         return vehicles.filter(v => v.status === 'Available');
     }, [vehicles, isEditing, editingReservation]);
 
@@ -139,12 +137,11 @@ export default function ReservationsClient() {
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
             });
 
-            // If vehicle was changed, update statuses for both old and new vehicle
+            await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customer}.`);
+
             if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
-                // Mark original vehicle as available
                 const oldVehicleRef = doc(db, 'vehicles', originalVehicleId);
                 await updateDoc(oldVehicleRef, { status: 'Available' });
-                // Mark new vehicle as rented
                 const newVehicleRef = doc(db, 'vehicles', selectedVehicle.id);
                 await updateDoc(newVehicleRef, { status: 'Rented' });
             }
@@ -158,8 +155,8 @@ export default function ReservationsClient() {
                 agent: agentName,
             };
             await setDoc(doc(db, 'reservations', newId), reservationToAdd);
+            await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customer} with vehicle ${reservationToAdd.vehicle}`);
 
-            // Set vehicle status to Rented
             const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
             await updateDoc(vehicleRef, { status: 'Rented' });
 
@@ -168,7 +165,6 @@ export default function ReservationsClient() {
         setOpen(false);
     };
     
-    // Reset state when dialog closes
     React.useEffect(() => {
         if (!open) {
             setEditingReservation(null);
@@ -181,9 +177,10 @@ export default function ReservationsClient() {
         const resRef = doc(db, 'reservations', reservation.id);
         await updateDoc(resRef, { status: 'Cancelled' });
 
-        // Set vehicle status back to Available
         const vehicleRef = doc(db, 'vehicles', reservation.vehicleId);
         await updateDoc(vehicleRef, { status: 'Available' });
+        
+        await logActivity('Cancel', 'Reservation', reservation.id, `Cancelled reservation for ${reservation.customer}.`);
 
         toast({
             title: "Reservation Cancelled",
@@ -195,7 +192,6 @@ export default function ReservationsClient() {
         if (!db) return;
         const agentName = user?.displayName ?? 'System';
         
-        // This is a simplified ID generation, a more robust solution would use a counter on the server
         const newInvoiceId = `INV-2024-${String(Date.now()).slice(-4)}`;
         
         const newInvoice = {
@@ -209,6 +205,7 @@ export default function ReservationsClient() {
         };
 
         await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice);
+        await logActivity('Create', 'Invoice', newInvoiceId, `Generated invoice for reservation ${reservation.id}`);
         
         toast({
             title: 'Invoice Generated',

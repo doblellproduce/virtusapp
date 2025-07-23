@@ -35,11 +35,11 @@ async function inviteUser(email: string, displayName: string, role: UserRole) {
             throw new Error(result.error || 'Failed to create user.');
         }
 
-        return { success: true, message: result.message };
+        return { success: true, message: result.message, newUser: { id: result.uid, email, name: displayName, role } };
 
     } catch (error: any) {
         console.error("Error inviting user:", error);
-        return { success: false, message: error.message || 'An unknown error occurred.' };
+        return { success: false, message: error.message || 'An unknown error occurred.', newUser: null };
     }
 }
 
@@ -60,7 +60,7 @@ export default function UsersPage() {
     const [editingUser, setEditingUser] = React.useState<UserProfile | null>(null);
     const [userData, setUserData] = React.useState<NewUser>(emptyUser);
     const { toast } = useToast();
-    const { user: currentUser, role: currentUserRole, sendPasswordReset, db } = useAuth();
+    const { user: currentUser, role: currentUserRole, sendPasswordReset, db, logActivity } = useAuth();
     const [searchTerm, setSearchTerm] = React.useState('');
 
     const fetchUsers = React.useCallback(async () => {
@@ -128,10 +128,12 @@ export default function UsersPage() {
                 email: userData.email,
                 role: userData.role,
             });
+            await logActivity('Update', 'User', editingUser.id, `Updated user profile for ${userData.name}`);
             toast({ title: "User Updated", description: `Details for ${userData.name} have been updated.` });
         } else {
             const result = await inviteUser(userData.email, userData.name, userData.role);
-             if (result.success) {
+             if (result.success && result.newUser) {
+                await logActivity('Create', 'User', result.newUser.id, `Invited new user: ${result.newUser.name}`);
                 toast({ title: "User Invited Successfully", description: result.message });
             } else {
                 toast({ variant: 'destructive', title: "Error Inviting User", description: result.message });
@@ -162,6 +164,7 @@ export default function UsersPage() {
         // In a real app, you'd call a Cloud Function here to delete the Auth user and the Firestore doc.
         // For example: await deleteUserFunction({ userId });
         await deleteDoc(doc(db, "users", userId));
+        await logActivity('Delete', 'User', userId, `Deleted user ${userToDelete?.name || 'N/A'}`);
         
         toast({ title: "User Deleted (Firestore Only)", description: `The user ${userToDelete?.name} has been deleted from Firestore. Auth record still exists.` });
         fetchUsers();
@@ -178,6 +181,7 @@ export default function UsersPage() {
         }
         try {
             await sendPasswordReset(user.email);
+            await logActivity('Update', 'User', user.id, `Sent password reset email to ${user.name}`);
             toast({
                 title: "Password Reset Sent",
                 description: `A password reset link has been sent to ${user.email}.`

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 type Expense = {
     id: string;
@@ -22,10 +22,11 @@ type Expense = {
     amount: string;
     date: string;
     status: 'Pending' | 'Paid' | 'Overdue';
+    createdBy: string;
 }
 type NewExpense = Omit<Expense, 'id'>;
 
-const emptyExpense: NewExpense = {
+const emptyExpense: Omit<Expense, 'id' | 'createdBy'> = {
     description: '',
     category: 'Maintenance',
     amount: '',
@@ -35,13 +36,13 @@ const emptyExpense: NewExpense = {
 
 export default function ExpensesPage() {
     const { toast } = useToast();
-    const { db, role } = useAuth();
+    const { db, role, userProfile, logActivity } = useAuth();
     const [expenses, setExpenses] = React.useState<Expense[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [open, setOpen] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [editingExpense, setEditingExpense] = React.useState<Expense | null>(null);
-    const [expenseData, setExpenseData] = React.useState<NewExpense>(emptyExpense);
+    const [expenseData, setExpenseData] = React.useState<Omit<NewExpense, 'createdBy'>>(emptyExpense);
 
     const isEditing = editingExpense !== null;
     const canEdit = role === 'Admin' || role === 'Supervisor';
@@ -87,27 +88,30 @@ export default function ExpensesPage() {
         setExpenseData(prev => ({ ...prev, [id]: value }));
     };
 
-    const handleSelectChange = (id: keyof NewExpense) => (value: string) => {
+    const handleSelectChange = (id: keyof Omit<NewExpense, 'createdBy' | 'description' | 'amount' | 'date'>) => (value: string) => {
         setExpenseData(prev => ({ ...prev, [id]: value as any }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) return;
+        if (!db || !userProfile) return;
         setIsSubmitting(true);
 
-        const dataToSave = {
+        const dataToSave: NewExpense = {
             ...expenseData,
             amount: parseFloat(expenseData.amount).toFixed(2),
+            createdBy: userProfile.name,
         };
 
         try {
             if (isEditing && editingExpense) {
                 const expenseRef = doc(db, 'expenses', editingExpense.id);
                 await updateDoc(expenseRef, dataToSave);
+                await logActivity('Update', 'Expense', editingExpense.id, `Updated expense: ${dataToSave.description}`);
                 toast({ title: 'Expense Updated', description: 'The expense has been successfully updated.' });
             } else {
-                await addDoc(collection(db, 'expenses'), dataToSave);
+                const newDocRef = await addDoc(collection(db, 'expenses'), dataToSave);
+                await logActivity('Create', 'Expense', newDocRef.id, `Created expense: ${dataToSave.description} for $${dataToSave.amount}`);
                 toast({ title: 'Expense Added', description: 'The new expense has been recorded.' });
             }
             setOpen(false);
@@ -124,6 +128,7 @@ export default function ExpensesPage() {
         const expenseRef = doc(db, 'expenses', expenseId);
         try {
             await updateDoc(expenseRef, { status: 'Paid' });
+            await logActivity('Update', 'Expense', expenseId, `Marked expense as Paid.`);
             toast({
                 title: "Expense Paid",
                 description: `Expense has been marked as paid.`,
@@ -189,6 +194,7 @@ export default function ExpensesPage() {
                                 <TableHead>Amount</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Created By</TableHead>
                                 <TableHead><span className="sr-only">Actions</span></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -207,6 +213,7 @@ export default function ExpensesPage() {
                                             {expense.status}
                                         </Badge>
                                     </TableCell>
+                                    <TableCell>{expense.createdBy}</TableCell>
                                     <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -247,7 +254,7 @@ export default function ExpensesPage() {
                         </div>
                         <div>
                             <Label htmlFor="category">Category</Label>
-                            <Select onValueChange={(value) => handleSelectChange('category')(value)} value={expenseData.category} required disabled={isSubmitting}>
+                            <Select onValueChange={handleSelectChange('category')} value={expenseData.category} required disabled={isSubmitting}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a category" />
                                 </SelectTrigger>
@@ -274,7 +281,7 @@ export default function ExpensesPage() {
                         </div>
                          <div>
                             <Label htmlFor="status">Status</Label>
-                            <Select onValueChange={(value) => handleSelectChange('status')(value)} value={expenseData.status} required disabled={isSubmitting}>
+                            <Select onValueChange={handleSelectChange('status')} value={expenseData.status} required disabled={isSubmitting}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a status" />
                                 </SelectTrigger>

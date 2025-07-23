@@ -12,9 +12,9 @@ import {
     type Auth,
     getAuth
 } from 'firebase/auth';
-import { doc, onSnapshot, getFirestore, type Firestore } from 'firebase/firestore';
+import { doc, onSnapshot, getFirestore, type Firestore, addDoc, collection, getDoc } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-import type { UserProfile, UserRole } from '@/lib/types';
+import type { UserProfile, UserRole, ActivityLog } from '@/lib/types';
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 
 // This is the public Firebase config for the client-side
@@ -36,6 +36,13 @@ interface FirebaseServices {
   storage: FirebaseStorage | null;
 }
 
+type LogActivity = (
+    action: ActivityLog['action'], 
+    entityType: ActivityLog['entityType'], 
+    entityId: ActivityLog['entityId'], 
+    details: ActivityLog['details']
+) => Promise<void>;
+
 interface AuthContextType extends FirebaseServices {
   user: User | null;
   userProfile: UserProfile | null;
@@ -44,6 +51,7 @@ interface AuthContextType extends FirebaseServices {
   login: (email: string, pass: string) => Promise<UserCredential>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  logActivity: LogActivity;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,6 +86,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const services = getClientFirebaseServices();
     setFirebaseServices(services);
   }, []);
+  
+  const logActivity: LogActivity = useCallback(async (action, entityType, entityId, details) => {
+        if (!firebaseServices.db || !userProfile) return;
+        try {
+            const logEntry: Omit<ActivityLog, 'id'> = {
+                timestamp: new Date().toISOString(),
+                user: userProfile.name || userProfile.email,
+                action,
+                entityType,
+                entityId,
+                details
+            };
+            await addDoc(collection(firebaseServices.db, 'activityLogs'), logEntry);
+        } catch (error) {
+            console.error("Error logging activity: ", error);
+        }
+    }, [firebaseServices.db, userProfile]);
 
 
   useEffect(() => {
@@ -132,13 +157,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [firebaseServices]);
 
 
-  const handleLogin = (email: string, pass: string) => {
-    if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
-    return signInWithEmailAndPassword(firebaseServices.auth, email, pass);
+  const handleLogin = async (email: string, pass: string) => {
+    if (!firebaseServices.auth || !firebaseServices.db) throw new Error("Firebase Auth is not initialized.");
+    const credentials = await signInWithEmailAndPassword(firebaseServices.auth, email, pass);
+    
+    // We can't use the logActivity helper here because userProfile is not yet set.
+    // We fetch it manually. This is a special case for login.
+    const userDoc = await getDoc(doc(firebaseServices.db, 'users', credentials.user.uid));
+    const profile = userDoc.data() as UserProfile;
+    
+    await addDoc(collection(firebaseServices.db, 'activityLogs'), {
+        timestamp: new Date().toISOString(),
+        user: profile.name || profile.email,
+        action: 'Login',
+        entityType: 'Auth',
+        entityId: credentials.user.uid,
+        details: `User ${profile.name} logged in.`
+    });
+
+    return credentials;
   };
 
   const handleLogout = async () => {
     if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
+    await logActivity('Logout', 'Auth', user?.uid || 'unknown', `User ${userProfile?.name || 'unknown'} logged out.`);
     await signOut(firebaseServices.auth);
   };
 
@@ -155,6 +197,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     login: handleLogin,
     logout: handleLogout,
     sendPasswordReset: handlePasswordReset,
+    logActivity,
     ...firebaseServices,
   };
 

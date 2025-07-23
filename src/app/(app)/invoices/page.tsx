@@ -26,7 +26,7 @@ type Invoice = {
 type NewInvoice = Omit<Invoice, 'id' | 'createdBy'>;
 
 export default function InvoicesPage() {
-    const { user, db } = useAuth();
+    const { user, db, logActivity } = useAuth();
     const [invoices, setInvoices] = React.useState<Invoice[]>([]);
     const [open, setOpen] = React.useState(false);
     const [editingInvoice, setEditingInvoice] = React.useState<Invoice | null>(null);
@@ -99,6 +99,7 @@ export default function InvoicesPage() {
                  amount: `${parseFloat(invoiceData.amount).toFixed(2)}`,
                  createdBy: agentName
             });
+            await logActivity('Update', 'Invoice', editingInvoice.id, `Updated invoice for ${invoiceData.customer}`);
         } else {
             const newId = generateNewInvoiceId();
             const invoiceToAdd: Omit<Invoice, 'id'> = {
@@ -107,6 +108,7 @@ export default function InvoicesPage() {
                 createdBy: agentName,
             };
             await setDoc(doc(db, 'invoices', newId), invoiceToAdd);
+            await logActivity('Create', 'Invoice', newId, `Created invoice for ${invoiceData.customer} for $${invoiceData.amount}`);
         }
         setOpen(false);
     }

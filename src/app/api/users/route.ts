@@ -48,6 +48,17 @@ export async function POST(request: NextRequest) {
     // TODO: In a real production app, you would use an email service (e.g., SendGrid, Mailgun)
     // to send a formatted invitation email containing this link.
     // For now, the link is not sent, but the user is created.
+    
+    // Log the creation event
+    await adminDB.collection('activityLogs').add({
+        timestamp: new Date().toISOString(),
+        user: userDoc.data()?.name || 'Admin',
+        action: 'Create',
+        entityType: 'User',
+        entityId: userRecord.uid,
+        details: `Invited new user: ${displayName} with role ${role}`
+    });
+
 
     return NextResponse.json({ 
         success: true, 
