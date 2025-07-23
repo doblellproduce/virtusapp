@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { onSnapshot, collection, addDoc, doc, updateDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { CustomerCombobox } from '@/components/customer-combobox';
 
-type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'customer'>;
+type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle'>;
 
 const emptyReservation: NewReservation = {
     customerId: '',
