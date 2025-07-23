@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -15,14 +16,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
-import type { Reservation, Vehicle, Customer, DepartureInspection } from '@/lib/types';
+import type { Reservation, Vehicle, Customer, VehicleInspection } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { onSnapshot, collection, addDoc, doc, updateDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { CustomerCombobox } from '@/components/customer-combobox';
 import DepartureInspectionModal from '@/components/departure-inspection-modal';
 
-type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection'>;
+type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection'>;
 
 const emptyReservation: NewReservation = {
     customerId: '',
@@ -46,8 +47,10 @@ export default function ReservationsClient() {
     const [reservationData, setReservationData] = React.useState<NewReservation>(emptyReservation);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [highlightedRes, setHighlightedRes] = React.useState<string | null>(null);
+    
     const [isInspectionModalOpen, setIsInspectionModalOpen] = React.useState(false);
     const [inspectingReservation, setInspectingReservation] = React.useState<Reservation | null>(null);
+    const [inspectionType, setInspectionType] = React.useState<'departure' | 'return'>('departure');
 
     React.useEffect(() => {
         if (!db) return;
@@ -275,7 +278,8 @@ export default function ReservationsClient() {
         });
     };
     
-    const handleStartDeparture = (reservation: Reservation) => {
+    const handleStartInspection = (reservation: Reservation, type: 'departure' | 'return') => {
+        setInspectionType(type);
         setInspectingReservation(reservation);
         setIsInspectionModalOpen(true);
     };
@@ -300,27 +304,39 @@ export default function ReservationsClient() {
                 return getDownloadURL(fileRef);
             };
             
-            const photoUrls = await Promise.all(data.photos.map(p => uploadPhoto(p, `inspections/${inspectingReservation.id}`)));
-            const signatureUrl = data.signature ? await uploadPhoto(data.signature, `signatures/${inspectingReservation.id}`) : '';
+            const photoUrls = await Promise.all(data.photos.map(p => uploadPhoto(p, `inspections/${inspectingReservation.id}/${inspectionType}`)));
+            const signatureUrl = data.signature ? await uploadPhoto(data.signature, `signatures/${inspectingReservation.id}/${inspectionType}`) : '';
 
-            const inspectionData: DepartureInspection = {
+            const inspectionData: VehicleInspection = {
                 photos: photoUrls.filter(url => url),
                 notes: data.notes,
-                fuelLevel: data.fuelLevel as DepartureInspection['fuelLevel'],
+                fuelLevel: data.fuelLevel as VehicleInspection['fuelLevel'],
                 mileage: Number(data.mileage),
                 signatureUrl,
                 timestamp: new Date().toISOString(),
             };
             
             const resRef = doc(db, 'reservations', inspectingReservation.id);
-            await updateDoc(resRef, {
-                departureInspection: inspectionData,
-                status: 'Active',
-            });
-            
-            await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
+            if (inspectionType === 'departure') {
+                await updateDoc(resRef, {
+                    departureInspection: inspectionData,
+                    status: 'Active',
+                });
+                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
+                toast({ title: 'Inspection Complete', description: 'Vehicle departure inspection has been saved.' });
+            } else {
+                 await updateDoc(resRef, {
+                    returnInspection: inspectionData,
+                    status: 'Completed',
+                });
+                const vehicleRef = doc(db, 'vehicles', inspectingReservation.vehicleId);
+                await updateDoc(vehicleRef, { status: 'Available' });
 
-            toast({ title: 'Inspection Complete', description: 'Vehicle departure inspection has been saved.' });
+                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed return inspection.');
+                await logActivity('Update', 'Vehicle', inspectingReservation.vehicleId, 'Status set to Available (return inspection).');
+                toast({ title: 'Return Complete', description: 'Vehicle return inspection has been saved.' });
+            }
+            
             setIsInspectionModalOpen(false);
             setInspectingReservation(null);
             
@@ -415,21 +431,33 @@ export default function ReservationsClient() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleStartDeparture(res)} disabled={res.status !== 'Upcoming' || !!res.departureInspection}>
-                                                    <FileCheck className="mr-2 h-4 w-4" />
-                                                    {res.departureInspection ? 'Inspection Completed' : 'Start Departure'}
-                                                </DropdownMenuItem>
-                                                 {res.departureInspection && (
-                                                    <DropdownMenuItem onClick={() => handleStartDeparture(res)}>
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        View Inspection
+                                                
+                                                {res.status === 'Upcoming' && (
+                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, 'departure')} disabled={!!res.departureInspection}>
+                                                        <FileCheck className="mr-2 h-4 w-4" />
+                                                        {res.departureInspection ? 'Departure Done' : 'Start Departure'}
                                                     </DropdownMenuItem>
                                                 )}
+                                                {res.status === 'Active' && (
+                                                     <DropdownMenuItem onClick={() => handleStartInspection(res, 'return')} disabled={!!res.returnInspection}>
+                                                        <Undo2 className="mr-2 h-4 w-4" />
+                                                         {res.returnInspection ? 'Return Done' : 'Start Return'}
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                 {(res.departureInspection || res.returnInspection) && (
+                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Inspections
+                                                    </DropdownMenuItem>
+                                                )}
+                                                
+                                                <DropdownMenuSeparator />
+
                                                 <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={res.status === 'Cancelled' || res.status === 'Pending Signature'}>
                                                     <FileText className="mr-2 h-4 w-4" />
                                                     Generate Invoice
                                                 </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem onClick={() => handleOpenDialog(res)}>
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     Edit
@@ -543,6 +571,7 @@ export default function ReservationsClient() {
                     onClose={() => setIsInspectionModalOpen(false)}
                     onSubmit={handleInspectionSubmit}
                     reservation={inspectingReservation}
+                    inspectionType={inspectionType}
                 />
             )}
         </div>

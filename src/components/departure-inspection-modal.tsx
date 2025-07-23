@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -10,17 +11,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Camera, Car, Fuel, Milestone, StickyNote, PenSquare } from 'lucide-react';
-import type { Reservation } from '@/lib/types';
+import type { Reservation, VehicleInspection } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from './ui/separator';
 
 interface DepartureInspectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
   reservation: Reservation | null;
+  inspectionType: 'departure' | 'return';
 }
 
-const PhotoUploadSlot = ({ id, label, onFileChange, previewUrl }: { id: string, label: string, onFileChange: (file: File | null) => void, previewUrl: string | null }) => (
+const PhotoUploadSlot = ({ id, label, onFileChange, previewUrl, isViewing }: { id: string, label: string, onFileChange: (file: File | null) => void, previewUrl: string | null, isViewing: boolean }) => (
     <div className="space-y-2">
         <Label htmlFor={id} className="text-center block">{label}</Label>
         <div className="aspect-video w-full rounded-md border-2 border-dashed flex items-center justify-center relative bg-muted/40">
@@ -29,19 +32,48 @@ const PhotoUploadSlot = ({ id, label, onFileChange, previewUrl }: { id: string, 
             ) : (
                 <Camera className="h-10 w-10 text-muted-foreground" />
             )}
-            <Input 
-                id={id} 
-                type="file" 
-                accept="image/*"
-                capture="environment"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)}
-            />
+            {!isViewing && (
+                <Input 
+                    id={id} 
+                    type="file" 
+                    accept="image/*"
+                    capture="environment"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)}
+                />
+            )}
         </div>
     </div>
 );
 
-export default function DepartureInspectionModal({ isOpen, onClose, onSubmit, reservation }: DepartureInspectionModalProps) {
+const InspectionDetailsView = ({ title, inspection }: { title: string, inspection: VehicleInspection }) => (
+    <div className="space-y-4">
+        <h4 className="font-semibold text-lg">{title}</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {inspection.photos.map((photo, index) => (
+                 <div key={index} className="relative aspect-video">
+                    <Image src={photo} alt={`${title} photo ${index + 1}`} layout="fill" className="object-cover rounded-md" />
+                </div>
+            ))}
+        </div>
+         <div className="grid grid-cols-2 gap-4 text-sm">
+            <p><strong>Kilometraje:</strong> {inspection.mileage} km</p>
+            <p><strong>Combustible:</strong> {inspection.fuelLevel}</p>
+        </div>
+        {inspection.notes && <p className="text-sm"><strong>Notas:</strong> {inspection.notes}</p>}
+        {inspection.signatureUrl && (
+            <div>
+                 <p className="text-sm font-semibold">Firma:</p>
+                 <div className="relative h-24 border rounded-md bg-gray-100">
+                    <Image src={inspection.signatureUrl} alt="Firma" layout="fill" className="object-contain p-2" />
+                 </div>
+            </div>
+        )}
+    </div>
+);
+
+
+export default function DepartureInspectionModal({ isOpen, onClose, onSubmit, reservation, inspectionType }: DepartureInspectionModalProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [mileage, setMileage] = React.useState('');
   const [fuelLevel, setFuelLevel] = React.useState('Full');
@@ -56,23 +88,35 @@ export default function DepartureInspectionModal({ isOpen, onClose, onSubmit, re
   const [signaturePreview, setSignaturePreview] = React.useState<string | null>(null);
   const { toast } = useToast();
   
-  const isViewing = !!reservation?.departureInspection;
+  const isViewing = (inspectionType === 'departure' && !!reservation?.departureInspection) || 
+                    (inspectionType === 'return' && !!reservation?.returnInspection);
 
   React.useEffect(() => {
-    if (reservation?.departureInspection) {
-        const { departureInspection } = reservation;
-        setMileage(String(departureInspection.mileage));
-        setFuelLevel(departureInspection.fuelLevel);
-        setNotes(departureInspection.notes);
-        setPreviews({
-            front: departureInspection.photos[0] || null,
-            right: departureInspection.photos[1] || null,
-            back: departureInspection.photos[2] || null,
-            left: departureInspection.photos[3] || null,
-        });
-        setSignaturePreview(departureInspection.signatureUrl || null);
+    if (isViewing && reservation) {
+        const inspectionData = inspectionType === 'departure' ? reservation.departureInspection : reservation.returnInspection;
+        if (inspectionData) {
+            setMileage(String(inspectionData.mileage));
+            setFuelLevel(inspectionData.fuelLevel);
+            setNotes(inspectionData.notes);
+            setPreviews({
+                front: inspectionData.photos[0] || null,
+                right: inspectionData.photos[1] || null,
+                back: inspectionData.photos[2] || null,
+                left: inspectionData.photos[3] || null,
+            });
+            setSignaturePreview(inspectionData.signatureUrl || null);
+        }
+    } else {
+        // Reset form for new entry
+        setMileage('');
+        setFuelLevel('Full');
+        setNotes('');
+        setPhotos({ front: null, right: null, back: null, left: null });
+        setPreviews({ front: null, right: null, back: null, left: null });
+        setSignature(null);
+        setSignaturePreview(null);
     }
-  }, [reservation]);
+  }, [isOpen, isViewing, reservation, inspectionType]);
 
   const handleFileChange = (id: string) => (file: File | null) => {
     setPhotos(prev => ({ ...prev, [id]: file }));
@@ -119,18 +163,9 @@ export default function DepartureInspectionModal({ isOpen, onClose, onSubmit, re
   
   if (!reservation) return null;
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>{isViewing ? 'Detalles de Inspección de Salida' : 'Inspección de Salida'}</DialogTitle>
-          <DialogDescription>
-             {isViewing ? `Viendo la inspección para la reserva ${reservation.id} del vehículo ${reservation.vehicle}.` : `Complete los detalles de la inspección para la reserva ${reservation.id} del vehículo ${reservation.vehicle}.`}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto p-1 pr-4">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+  const renderInspectionForm = () => (
+    <>
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
              <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -180,13 +215,36 @@ export default function DepartureInspectionModal({ isOpen, onClose, onSubmit, re
              <div className="space-y-4">
                 <Label className="flex items-center gap-2"><Camera className="h-4 w-4"/>Fotos del Vehículo</Label>
                 <div className="grid grid-cols-2 gap-4">
-                    <PhotoUploadSlot id="front" label="Frente" onFileChange={handleFileChange('front')} previewUrl={previews.front} />
-                    <PhotoUploadSlot id="right" label="Lado Derecho" onFileChange={handleFileChange('right')} previewUrl={previews.right} />
-                    <PhotoUploadSlot id="back" label="Atrás" onFileChange={handleFileChange('back')} previewUrl={previews.back} />
-                    <PhotoUploadSlot id="left" label="Lado Izquierdo" onFileChange={handleFileChange('left')} previewUrl={previews.left} />
+                    <PhotoUploadSlot id="front" label="Frente" onFileChange={handleFileChange('front')} previewUrl={previews.front} isViewing={isViewing}/>
+                    <PhotoUploadSlot id="right" label="Lado Derecho" onFileChange={handleFileChange('right')} previewUrl={previews.right} isViewing={isViewing}/>
+                    <PhotoUploadSlot id="back" label="Atrás" onFileChange={handleFileChange('back')} previewUrl={previews.back} isViewing={isViewing}/>
+                    <PhotoUploadSlot id="left" label="Lado Izquierdo" onFileChange={handleFileChange('left')} previewUrl={previews.left} isViewing={isViewing}/>
                 </div>
              </div>
           </div>
+    </>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{isViewing ? 'Detalles de Inspección' : `Inspección de ${inspectionType === 'departure' ? 'Salida' : 'Devolución'}`}</DialogTitle>
+          <DialogDescription>
+             {isViewing ? `Viendo las inspecciones para la reserva ${reservation.id}.` : `Complete los detalles para la reserva ${reservation.id}.`}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto p-1 pr-4">
+          
+          {isViewing ? (
+              <div className="space-y-6">
+                  {reservation.departureInspection && <InspectionDetailsView title="Inspección de Salida" inspection={reservation.departureInspection} />}
+                  {reservation.departureInspection && reservation.returnInspection && <Separator />}
+                  {reservation.returnInspection && <InspectionDetailsView title="Inspección de Devolución" inspection={reservation.returnInspection} />}
+              </div>
+          ) : (
+            renderInspectionForm()
+          )}
           
           <DialogFooter>
             <DialogClose asChild>
@@ -206,4 +264,3 @@ export default function DepartureInspectionModal({ isOpen, onClose, onSubmit, re
     </Dialog>
   );
 }
-

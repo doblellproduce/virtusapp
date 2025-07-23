@@ -43,8 +43,8 @@ export type Vehicle = {
     lastServiceDate: string;
 };
 
-export type DepartureInspection = {
-    photos: string[]; // URLs of the 4 inspection photos
+export type VehicleInspection = {
+    photos: string[]; // URLs of the inspection photos
     notes: string;
     fuelLevel: 'Full' | '3/4' | '1/2' | '1/4' | 'Empty';
     mileage: number;
@@ -64,7 +64,8 @@ export type Reservation = {
     agent: string;
     totalCost?: number; // Added to store the calculated cost
     insurance?: any; // Using any for simplicity as it's complex
-    departureInspection?: DepartureInspection;
+    departureInspection?: VehicleInspection;
+    returnInspection?: VehicleInspection;
 };
 
 export type Invoice = {
