@@ -9,19 +9,6 @@ const nextConfig = {
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   },
-  webpack: (config, { isServer }) => {
-    // Add fallbacks for Node.js core modules to prevent build errors in the browser.
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        "process": require.resolve("process/browser"),
-        "stream": require.resolve("stream-browserify"),
-        "zlib": require.resolve("browserify-zlib"),
-      };
-    }
-
-    return config;
-  },
 };
 
 module.exports = nextConfig;
