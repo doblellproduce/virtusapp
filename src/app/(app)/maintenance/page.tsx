@@ -30,7 +30,7 @@ const emptyLog: NewMaintenanceLog = {
 
 export default function MaintenancePage() {
     const { toast } = useToast();
-    const { db, userProfile, logActivity } = useAuth();
+    const { db, userProfile } = useAuth();
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
     const [logs, setLogs] = React.useState<MaintenanceLog[]>([]);
     const [loading, setLoading] = React.useState(true);
@@ -103,7 +103,7 @@ export default function MaintenancePage() {
         try {
             // Add the new log to the maintenanceLogs collection
             const logDocRef = await addDoc(collection(db, 'maintenanceLogs'), newLog);
-            await logActivity('Create', 'Maintenance', logDocRef.id, `Logged ${newLog.serviceType} for ${newLog.vehicleName}`);
+            // await logActivity('Create', 'Maintenance', logDocRef.id, `Logged ${newLog.serviceType} for ${newLog.vehicleName}`);
             
             // If there's a cost, create an expense automatically
             if (parseFloat(newLog.cost) > 0) {
@@ -118,7 +118,7 @@ export default function MaintenancePage() {
                     tenantId: userProfile.tenantId,
                 };
                 const expenseDocRef = await addDoc(collection(db, 'expenses'), newExpense);
-                await logActivity('Create', 'Expense', expenseDocRef.id, `Auto-created expense for maintenance log ${logDocRef.id}`);
+                // await logActivity('Create', 'Expense', expenseDocRef.id, `Auto-created expense for maintenance log ${logDocRef.id}`);
             }
 
             // Update the vehicle's status to 'Maintenance' and its last service date
@@ -127,7 +127,7 @@ export default function MaintenancePage() {
                 status: 'Maintenance',
                 lastServiceDate: newLog.date 
             });
-            await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Maintenance (new log).`);
+            // await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Maintenance (new log).`);
 
             toast({ title: 'Maintenance Logged', description: `Service for ${newLog.vehicleName} has been recorded and status updated.` });
             setOpen(false);
@@ -315,5 +315,3 @@ export default function MaintenancePage() {
         </div>
     );
 }
-
-    

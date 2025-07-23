@@ -303,7 +303,7 @@ export default function UsersPage() {
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                             <AlertDialogAction onClick={() => handleDelete(user.id)} className="bg-destructive hover:bg-destructive/90">Yes, delete user</AlertDialogAction>
-                                                        </Footer>
+                                                        </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
                                             </DropdownMenuContent>

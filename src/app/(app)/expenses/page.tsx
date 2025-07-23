@@ -37,7 +37,7 @@ const emptyExpense: Omit<Expense, 'id' | 'createdBy' | 'tenantId'> = {
 
 export default function ExpensesPage() {
     const { toast } = useToast();
-    const { db, role, userProfile, logActivity } = useAuth();
+    const { db, role, userProfile } = useAuth();
     const [expenses, setExpenses] = React.useState<Expense[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [open, setOpen] = React.useState(false);
@@ -115,11 +115,11 @@ export default function ExpensesPage() {
                 // We don't update tenantId on edit
                 const { tenantId, ...updateData } = dataToSave;
                 await updateDoc(expenseRef, updateData);
-                await logActivity('Update', 'Expense', editingExpense.id, `Updated expense: ${dataToSave.description}`);
+                // await logActivity('Update', 'Expense', editingExpense.id, `Updated expense: ${dataToSave.description}`);
                 toast({ title: 'Expense Updated', description: 'The expense has been successfully updated.' });
             } else {
                 const newDocRef = await addDoc(collection(db, 'expenses'), dataToSave);
-                await logActivity('Create', 'Expense', newDocRef.id, `Created expense: ${dataToSave.description} for $${dataToSave.amount}`);
+                // await logActivity('Create', 'Expense', newDocRef.id, `Created expense: ${dataToSave.description} for $${dataToSave.amount}`);
                 toast({ title: 'Expense Added', description: 'The new expense has been recorded.' });
             }
             setOpen(false);
@@ -136,7 +136,7 @@ export default function ExpensesPage() {
         const expenseRef = doc(db, 'expenses', expenseId);
         try {
             await updateDoc(expenseRef, { status: 'Paid' });
-            await logActivity('Update', 'Expense', expenseId, `Marked expense as Paid.`);
+            // await logActivity('Update', 'Expense', expenseId, `Marked expense as Paid.`);
             toast({
                 title: "Expense Paid",
                 description: `Expense has been marked as paid.`,
@@ -315,5 +315,3 @@ export default function ExpensesPage() {
         </div>
     );
 }
-
-    

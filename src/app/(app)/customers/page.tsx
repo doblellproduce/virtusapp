@@ -28,7 +28,7 @@ const emptyCustomer: NewCustomer = {
 };
 
 export default function CustomersPage() {
-    const { db, userProfile, logActivity } = useAuth();
+    const { db, userProfile } = useAuth();
     const { toast } = useToast();
     
     const [customers, setCustomers] = React.useState<Customer[]>([]);
@@ -91,7 +91,7 @@ export default function CustomersPage() {
             if (isEditing && editingCustomer) {
                 const customerRef = doc(db, 'customers', editingCustomer.id);
                 await updateDoc(customerRef, customerData);
-                await logActivity('Update', 'Customer', editingCustomer.id, `Updated customer profile for ${customerData.name}`);
+                // await logActivity('Update', 'Customer', editingCustomer.id, `Updated customer profile for ${customerData.name}`);
                 toast({ title: 'Customer Updated', description: 'The customer details have been updated.' });
             } else {
                 const customerToAdd = {
@@ -100,7 +100,7 @@ export default function CustomersPage() {
                     tenantId: userProfile.tenantId,
                 }
                 const newDocRef = await addDoc(collection(db, 'customers'), customerToAdd);
-                await logActivity('Create', 'Customer', newDocRef.id, `Created new customer: ${customerData.name}`);
+                // await logActivity('Create', 'Customer', newDocRef.id, `Created new customer: ${customerData.name}`);
                 toast({ title: 'Customer Added', description: 'The new customer has been saved.' });
             }
             setOpen(false);
@@ -116,7 +116,7 @@ export default function CustomersPage() {
         if (!db) return;
         try {
             await deleteDoc(doc(db, 'customers', customerId));
-            await logActivity('Delete', 'Customer', customerId, `Deleted customer`);
+            // await logActivity('Delete', 'Customer', customerId, `Deleted customer`);
             toast({ title: 'Customer Deleted' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete customer.' });

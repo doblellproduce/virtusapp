@@ -10,7 +10,7 @@ import {
     type User,
     getAuth
 } from 'firebase/auth';
-import { doc, onSnapshot, getFirestore, type Firestore } from 'firebase/firestore';
+import { doc, onSnapshot, getFirestore, type Firestore, addDoc, collection } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import type { UserProfile, UserRole } from '@/lib/types';
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";

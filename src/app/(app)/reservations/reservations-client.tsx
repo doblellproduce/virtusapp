@@ -34,7 +34,7 @@ const emptyReservation: NewReservation = {
 };
 
 export default function ReservationsClient() {
-    const { user, db, storage, userProfile, logActivity } = useAuth();
+    const { user, db, storage, userProfile } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -203,16 +203,16 @@ export default function ReservationsClient() {
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
             });
 
-            await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customerName}.`);
+            // await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customerName}.`);
 
             if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
                 const oldVehicleRef = doc(db, 'vehicles', originalVehicleId);
                 await updateDoc(oldVehicleRef, { status: 'Available' });
-                await logActivity('Update', 'Vehicle', originalVehicleId, `Status set to Available (reservation updated).`);
+                // await logActivity('Update', 'Vehicle', originalVehicleId, `Status set to Available (reservation updated).`);
 
                 const newVehicleRef = doc(db, 'vehicles', selectedVehicle.id);
                 await updateDoc(newVehicleRef, { status: 'Rented' });
-                await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (reservation updated).`);
+                // await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (reservation updated).`);
             }
 
             toast({ title: "Reservation Updated" });
@@ -225,11 +225,11 @@ export default function ReservationsClient() {
                 tenantId: userProfile.tenantId,
             };
             await setDoc(doc(db, 'reservations', newId), reservationToAdd);
-            await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customerName} with vehicle ${reservationToAdd.vehicle}`);
+            // await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customerName} with vehicle ${reservationToAdd.vehicle}`);
 
             const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
             await updateDoc(vehicleRef, { status: 'Rented' });
-            await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (new reservation).`);
+            // await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (new reservation).`);
 
             toast({ title: "Reservation Created" });
         }
@@ -251,8 +251,8 @@ export default function ReservationsClient() {
         const vehicleRef = doc(db, 'vehicles', reservation.vehicleId);
         await updateDoc(vehicleRef, { status: 'Available' });
         
-        await logActivity('Cancel', 'Reservation', reservation.id, `Cancelled reservation for ${reservation.customerName}.`);
-        await logActivity('Update', 'Vehicle', reservation.vehicleId, `Status set to Available (reservation cancelled).`);
+        // await logActivity('Cancel', 'Reservation', reservation.id, `Cancelled reservation for ${reservation.customerName}.`);
+        // await logActivity('Update', 'Vehicle', reservation.vehicleId, `Status set to Available (reservation cancelled).`);
 
         toast({
             title: "Reservation Cancelled",
@@ -279,7 +279,7 @@ export default function ReservationsClient() {
         };
 
         await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice);
-        await logActivity('Create', 'Invoice', newInvoiceId, `Generated invoice for reservation ${reservation.id}`);
+        // await logActivity('Create', 'Invoice', newInvoiceId, `Generated invoice for reservation ${reservation.id}`);
         
         toast({
             title: 'Invoice Generated',
@@ -331,7 +331,7 @@ export default function ReservationsClient() {
                     departureInspection: inspectionData,
                     status: 'Active',
                 });
-                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
+                // await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
                 toast({ title: 'Inspection Complete', description: 'Vehicle departure inspection has been saved.' });
             } else {
                  await updateDoc(resRef, {
@@ -341,8 +341,8 @@ export default function ReservationsClient() {
                 const vehicleRef = doc(db, 'vehicles', inspectingReservation.vehicleId);
                 await updateDoc(vehicleRef, { status: 'Available' });
 
-                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed return inspection.');
-                await logActivity('Update', 'Vehicle', inspectingReservation.vehicleId, 'Status set to Available (return inspection).');
+                // await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed return inspection.');
+                // await logActivity('Update', 'Vehicle', inspectingReservation.vehicleId, 'Status set to Available (return inspection).');
                 toast({ title: 'Return Complete', description: 'Vehicle return inspection has been saved.' });
             }
             
@@ -586,5 +586,3 @@ export default function ReservationsClient() {
         </div>
     );
 }
-
-    
