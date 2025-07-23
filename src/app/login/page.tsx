@@ -19,21 +19,29 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If the user is logged in, redirect to the dashboard.
     if (!loading && user) {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
 
-  // Show a loader while checking auth state or redirecting.
-  if (loading || user) {
+  if (loading) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
     );
   }
+  
+  // If not loading and there's a user, we're in the process of redirecting, so keep showing loader.
+  if(user) {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
+
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">

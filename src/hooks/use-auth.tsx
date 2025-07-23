@@ -91,7 +91,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUserProfile(profileData);
                 setRole(profileData.role);
             } else {
-                // User is authenticated but has no profile document
                 setUserProfile(null);
                 setRole(null);
             }
@@ -104,7 +103,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         return () => unsubProfile();
       } else {
-        // No user is signed in
         setUserProfile(null);
         setRole(null);
         setLoading(false);
