@@ -19,15 +19,17 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // If auth is not loading and a user exists, redirect to dashboard.
+    // Si la autenticación no está cargando y SÍ hay un usuario,
+    // significa que ya tiene una sesión válida. Redirigir al dashboard.
     if (!loading && user) {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
 
-  // Show loader ONLY while auth state is being determined.
-  if (loading) {
+  // Mostrar el spinner solo mientras el estado de autenticación se está determinando.
+  // O si el usuario ya existe y estamos esperando la redirección.
+  if (loading || user) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -35,8 +37,7 @@ export default function LoginPage() {
     );
   }
   
-  // If not loading and no user, show the login form.
-  // If a user exists, this part won't be reached because the useEffect will trigger a redirect.
+  // Si no está cargando y no hay usuario, es seguro mostrar el formulario de login.
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">

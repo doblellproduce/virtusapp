@@ -48,10 +48,12 @@ export default function LoginForm() {
     setIsSubmitting(true);
     try {
       await login(data.email, data.password);
-      // SUCCESS: Explicitly redirect to dashboard AFTER login is successful.
+      // **SOLUCIÓN CLAVE**: Redirección explícita e inmediata tras login exitoso.
+      // Esto evita depender de que otros componentes reaccionen al cambio de estado.
       router.push('/dashboard');
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";
+       // Manejo robusto de errores comunes de Firebase Auth
        switch (error.code) {
          case 'auth/user-not-found':
          case 'auth/wrong-password':
@@ -61,15 +63,20 @@ export default function LoginForm() {
          case 'auth/too-many-requests':
             errorMessage = 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
             break;
+         case 'auth/network-request-failed':
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+            break;
          default:
-            errorMessage = error.message;
+            // Log del error real para debugging en el servidor o consola
+            console.error("Login Error:", error); 
+            errorMessage = "An unexpected error occurred during login.";
             break;
        }
        setError(errorMessage);
+    } finally {
+        // Asegurarse de que el estado de carga se desactive si hay un error
        setIsSubmitting(false);
     }
-    // No need for a finally block to set isSubmitting to false,
-    // as it's handled on error and the page will navigate away on success.
   };
   
   const handlePasswordResetClick = async () => {

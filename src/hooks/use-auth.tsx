@@ -91,9 +91,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUserProfile(profileData);
                 setRole(profileData.role);
             } else {
+                // User exists in Auth, but not in Firestore. Handle this case.
                 setUserProfile(null);
                 setRole(null);
             }
+             // **SOLUCIÓN CLAVE**: Asegurarse de que loading sea falso DESPUÉS de obtener el perfil.
              setLoading(false);
         }, (error) => {
            console.error("Error in user profile snapshot listener:", error);
@@ -103,6 +105,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         return () => unsubProfile();
       } else {
+        // **SOLUCIÓN CLAVE**: Asegurarse de que loading sea falso si no hay usuario.
+        // Esto es crucial para que la página de login se renderice.
         setUserProfile(null);
         setRole(null);
         setLoading(false);
