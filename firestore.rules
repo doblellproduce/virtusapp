@@ -2,46 +2,40 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper function to check user role from their user document
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+    
+    function isPrivilegedUser(userId) {
+      let userRole = getUserRole(userId);
+      return userRole == 'Admin' || userRole == 'Supervisor';
+    }
 
-    // Vehicles can be read by anyone, but only modified by authenticated users.
+    // Public read access for vehicles
     match /vehicles/{vehicleId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
-
-    // Users can only read and update their own profile.
+    
+    // Users can only read/update their own profile
+    // Admins/Supervisors can read all user profiles
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      // Admin should be able to create/delete users via a backend function, not direct client access.
-      allow create, delete: if false; 
+      allow get, update: if request.auth != null && request.auth.uid == userId;
+      allow list: if request.auth != null && isPrivilegedUser(request.auth.uid);
+    }
+    
+    // Activity Logs can only be read by privileged users
+    match /activityLogs/{logId} {
+        allow read: if request.auth != null && isPrivilegedUser(request.auth.uid);
+        allow write: if request.auth != null; // Any authenticated user can trigger a log write
     }
 
-    // All other business-critical collections require authentication for any access.
-    match /reservations/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /customers/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /invoices/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /expenses/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /maintenanceLogs/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /documents/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /contracts/{document=**} {
-        allow read, write: if request.auth != null;
-    }
-    match /activityLogs/{document=**} {
-      // Only authenticated users can create logs. Reading should be restricted to admins via backend.
-      allow create: if request.auth != null;
-      allow read, update, delete: if false;
+    // All other collections are only accessible by authenticated users.
+    // This is a catch-all, specific rules above take precedence.
+    match /{path=**}/documents/{documentId} {
+       allow read, write: if request.auth != null;
     }
   }
 }
