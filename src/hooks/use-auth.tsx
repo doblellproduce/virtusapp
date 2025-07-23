@@ -84,7 +84,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
       if (authUser) {
-        setLoading(true); // Set loading while we fetch profile
         const userDocRef = doc(db, 'users', authUser.uid);
         const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -95,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUserProfile(null);
                 setRole(null);
             }
-             setLoading(false); // Finished fetching profile
+             setLoading(false);
         }, (error) => {
            console.error("Error in user profile snapshot listener:", error);
            setUserProfile(null);
@@ -104,7 +103,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
         return () => unsubProfile();
       } else {
-        // This is the crucial part: if there's no user, we're done loading.
         setUserProfile(null);
         setRole(null);
         setLoading(false);

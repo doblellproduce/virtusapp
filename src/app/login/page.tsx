@@ -26,8 +26,8 @@ export default function LoginPage() {
   }, [user, loading, router]);
 
 
-  // Show loader while auth state is being determined or if a user is found (and redirect is imminent).
-  if (loading || user) {
+  // Show loader ONLY while auth state is being determined.
+  if (loading) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -36,6 +36,7 @@ export default function LoginPage() {
   }
   
   // If not loading and no user, show the login form.
+  // If a user exists, this part won't be reached because the useEffect will trigger a redirect.
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">

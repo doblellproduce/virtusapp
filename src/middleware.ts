@@ -2,40 +2,43 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('firebaseIdToken');
+  const { pathname } = request.nextUrl;
 
-  // If the user is not authenticated and is trying to access a protected route,
-  // redirect them to the login page.
-  if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // If trying to access a protected route without a token, redirect to login
+  if (!token && !pathname.startsWith('/login')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
-  // If the user is authenticated and tries to access the login page, redirect to dashboard
-  if (token && request.nextUrl.pathname.startsWith('/login')) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+  // If logged in and trying to access login page, redirect to dashboard
+  if (token && pathname.startsWith('/login')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
   }
 
-  // Allow the request to proceed if the user is authenticated
   return NextResponse.next();
 }
 
-// The matcher now explicitly targets only the routes that should be protected.
-// This is a more robust and readable approach than using negative lookaheads.
-// It ensures that essential static files (_next/static, etc.) are never blocked.
+// This matcher protects all routes under the / (app) group,
+// except for the ones that should be public.
+// It explicitly allows all necessary Next.js and static files.
 export const config = {
   matcher: [
-    '/dashboard',
-    '/calendar',
-    '/documents',
-    '/expenses',
-    '/invoices',
-    '/logs',
-    '/maintenance',
-    '/reservations',
-    '/smart-reply',
-    '/users',
-    '/vehicles',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - / (the public root page)
+     * - /vehiculo (public vehicle detail pages)
+     * - /contrato (public contract page)
+     * - /login (the login page itself)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|vehiculo|contrato|login|$).*)',
   ],
 };
