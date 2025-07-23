@@ -1,4 +1,5 @@
 
+
 // In a real application, this data would come from a database.
 
 export type UserRole = 'Admin' | 'Supervisor' | 'Secretary';
@@ -42,6 +43,16 @@ export type Reservation = {
     agent: string;
     totalCost?: number; // Added to store the calculated cost
     insurance?: any; // Using any for simplicity as it's complex
+};
+
+export type Invoice = {
+  id: string;
+  customer: string;
+  date: string;
+  amount: string;
+  status: 'Paid' | 'Pending' | 'Overdue' | 'Draft';
+  createdBy: string;
+  paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
 };
 
 export type MaintenanceLog = {
