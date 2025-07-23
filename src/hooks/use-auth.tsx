@@ -73,39 +73,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const firebaseServices = getClientFirebaseServices();
 
-  const fetchUserProfile = useCallback((authUser: User, db: Firestore) => {
-    const userDocRef = doc(db, 'users', authUser.uid);
-    return onSnapshot(userDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-        setUserProfile(profileData);
-        setRole(profileData.role);
-      } else {
-        setUserProfile(null);
-        setRole(null);
-      }
-      setLoading(false);
-    }, (error) => {
-      console.error("Error in user profile snapshot listener:", error);
-      setUserProfile(null);
-      setRole(null);
-      setLoading(false);
-    });
-  }, []);
-
   useEffect(() => {
-    if (!firebaseServices.auth || !firebaseServices.db) {
+    if (!firebaseServices.auth) {
       setLoading(false);
       return;
     }
 
-    const { auth, db } = firebaseServices;
-
-    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
-      setUser(authUser);
+    const unsubscribeAuth = onAuthStateChanged(firebaseServices.auth, async (authUser) => {
       if (authUser) {
-        setLoading(true);
-        
+        setUser(authUser);
         // Sync token with server-side cookie
         const token = await authUser.getIdToken();
         await fetch('/api/auth', {
@@ -113,20 +89,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token }),
         });
-
-        const unsubProfile = fetchUserProfile(authUser, db);
-        return () => unsubProfile();
       } else {
-        // Clear user data and cookie
+        setUser(null);
         setUserProfile(null);
         setRole(null);
+        // Clear server-side cookie on logout
         await fetch('/api/auth', { method: 'DELETE' });
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
-  }, [firebaseServices, fetchUserProfile]);
+    return () => unsubscribeAuth();
+  }, [firebaseServices.auth]);
+
+  useEffect(() => {
+    if (!firebaseServices.db || !user) {
+        // If there's no user, we are done loading.
+        if (!user) setLoading(false);
+        return;
+    }
+
+    const userDocRef = doc(firebaseServices.db, 'users', user.uid);
+    const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+            setUserProfile(profileData);
+            setRole(profileData.role);
+        } else {
+            setUserProfile(null);
+            setRole(null);
+        }
+        setLoading(false);
+    }, (error) => {
+        console.error("Error in user profile snapshot listener:", error);
+        setUserProfile(null);
+        setRole(null);
+        setLoading(false);
+    });
+
+    return () => unsubscribeProfile();
+  }, [user, firebaseServices.db]);
+
 
   const handleLogin = (email: string, pass: string) => {
     if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
