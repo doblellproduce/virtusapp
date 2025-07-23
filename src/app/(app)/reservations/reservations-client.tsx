@@ -130,12 +130,23 @@ export default function ReservationsClient() {
             return;
         }
 
+        const originalVehicleId = isEditing ? editingReservation?.vehicleId : null;
+
         if (isEditing && editingReservation) {
             const resRef = doc(db, 'reservations', editingReservation.id);
             await updateDoc(resRef, {
                 ...reservationData,
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
             });
+
+             // If vehicle was changed, update statuses
+            if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
+                const oldVehicleRef = doc(db, 'vehicles', originalVehicleId);
+                await updateDoc(oldVehicleRef, { status: 'Available' });
+                const newVehicleRef = doc(db, 'vehicles', selectedVehicle.id);
+                await updateDoc(newVehicleRef, { status: 'Rented' });
+            }
+
             toast({ title: "Reservation Updated" });
         } else {
             const newId = generateNewReservationId();
@@ -145,6 +156,11 @@ export default function ReservationsClient() {
                 agent: agentName,
             };
             await setDoc(doc(db, 'reservations', newId), reservationToAdd);
+
+            // Set vehicle status to Rented
+            const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
+            await updateDoc(vehicleRef, { status: 'Rented' });
+
             toast({ title: "Reservation Created" });
         }
         setOpen(false);
@@ -158,13 +174,18 @@ export default function ReservationsClient() {
         }
     }, [open]);
     
-    const handleCancelReservation = async (reservationId: string) => {
+    const handleCancelReservation = async (reservation: Reservation) => {
         if (!db) return;
-        const resRef = doc(db, 'reservations', reservationId);
+        const resRef = doc(db, 'reservations', reservation.id);
         await updateDoc(resRef, { status: 'Cancelled' });
+
+        // Set vehicle status back to Available
+        const vehicleRef = doc(db, 'vehicles', reservation.vehicleId);
+        await updateDoc(vehicleRef, { status: 'Available' });
+
         toast({
             title: "Reservation Cancelled",
-            description: `Reservation ${reservationId} has been successfully cancelled.`,
+            description: `Reservation ${reservation.id} has been successfully cancelled.`,
         });
     };
     
@@ -306,7 +327,7 @@ export default function ReservationsClient() {
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Back</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleCancelReservation(res.id)} className="bg-destructive hover:bg-destructive/90">
+                                                            <AlertDialogAction onClick={() => handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
                                                                 Yes, Cancel Reservation
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>

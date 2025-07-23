@@ -97,12 +97,17 @@ export default function MaintenancePage() {
         };
         
         try {
+            // Add the new log to the maintenanceLogs collection
             await addDoc(collection(db, 'maintenanceLogs'), newLog);
             
+            // Update the vehicle's status to 'Maintenance' and its last service date
             const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
-            await updateDoc(vehicleRef, { lastServiceDate: newLog.date });
+            await updateDoc(vehicleRef, { 
+                status: 'Maintenance',
+                lastServiceDate: newLog.date 
+            });
 
-            toast({ title: 'Maintenance Logged', description: `Service for ${newLog.vehicleName} has been recorded.` });
+            toast({ title: 'Maintenance Logged', description: `Service for ${newLog.vehicleName} has been recorded and status updated.` });
             setOpen(false);
             fetchData(); // Refresh data after submission
         } catch (error) {
