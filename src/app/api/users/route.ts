@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { adminAuth, adminDB } from '@/lib/firebase/admin';
 import type { UserRole } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
     // 1. Verify Authentication & Authorization
-    const cookieStore = cookies();
-    const token = cookieStore.get('firebaseIdToken')?.value;
+    // In API Routes, get the cookie directly from the request object.
+    const token = request.cookies.get('firebaseIdToken')?.value;
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized: No token provided.' }, { status: 401 });
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
         success: true, 
-        message: `User ${displayName} created. An invitation/password reset link has been sent to ${email}.`,
+        message: `User ${displayName} created. An invitation/password reset link could be sent to ${email}.`,
         uid: userRecord.uid,
         // In a real app, you would not send the link back in the response for security reasons.
         // verificationLink: link 
