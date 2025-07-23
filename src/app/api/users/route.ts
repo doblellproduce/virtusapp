@@ -5,7 +5,6 @@ import type { UserRole } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     // 1. Verify Authentication & Authorization
-    // In API Routes, get the cookie directly from the request object.
     const token = request.cookies.get('firebaseIdToken')?.value;
 
     if (!token) {
@@ -15,7 +14,6 @@ export async function POST(request: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const requestingUid = decodedToken.uid;
     
-    // Check if the requesting user is an Admin
     const userDoc = await adminDB.collection('users').doc(requestingUid).get();
     if (!userDoc.exists || userDoc.data()?.role !== 'Admin') {
          return NextResponse.json({ error: 'Forbidden: You do not have permission to create users.' }, { status: 403 });
@@ -26,12 +24,18 @@ export async function POST(request: NextRequest) {
     if (!email || !displayName || !role) {
       return NextResponse.json({ error: 'Missing required fields: email, displayName, role.' }, { status: 400 });
     }
+    
+    // **SECURITY FIX**: Prevent creating another admin via the API
+    if (role === 'Admin') {
+        return NextResponse.json({ error: 'Forbidden: Cannot create an Admin user via this API.' }, { status: 403 });
+    }
+
 
     // 3. Create User in Firebase Auth
     const userRecord = await adminAuth.createUser({
       email: email,
       displayName: displayName,
-      emailVerified: false, // User will verify via password reset link
+      emailVerified: false, 
     });
 
     // 4. Create User Profile in Firestore
@@ -45,11 +49,7 @@ export async function POST(request: NextRequest) {
 
     // 5. Generate Password Reset Link (acts as an invite)
     const link = await adminAuth.generatePasswordResetLink(email);
-    // TODO: In a real production app, you would use an email service (e.g., SendGrid, Mailgun)
-    // to send a formatted invitation email containing this link.
-    // For now, the link is not sent, but the user is created.
     
-    // Log the creation event
     await adminDB.collection('activityLogs').add({
         timestamp: new Date().toISOString(),
         user: userDoc.data()?.name || 'Admin',
@@ -64,8 +64,6 @@ export async function POST(request: NextRequest) {
         success: true, 
         message: `User ${displayName} created. An invitation/password reset link could be sent to ${email}.`,
         uid: userRecord.uid,
-        // In a real app, you would not send the link back in the response for security reasons.
-        // verificationLink: link 
     }, { status: 200 });
 
   } catch (error: any) {

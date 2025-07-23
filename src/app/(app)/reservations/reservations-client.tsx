@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -467,7 +466,7 @@ export default function ReservationsClient() {
                                                         <DropdownMenuItem
                                                             onSelect={(e) => e.preventDefault()}
                                                             className="text-destructive focus:text-destructive"
-                                                            disabled={res.status === 'Cancelled' || res.status === 'Completed'}
+                                                            disabled={res.status === 'Cancelled' || res.status === 'Completed' || res.status === 'Active'}
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             Cancel Reservation

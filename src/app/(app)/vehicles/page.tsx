@@ -166,6 +166,16 @@ export default function VehiclesPage() {
         toast({ title: "Vehicle Deleted" });
         fetchData();
     };
+    
+    React.useEffect(() => {
+        if (!open) {
+            setEditingVehicle(null);
+            setVehicleData(emptyVehicle);
+            setImageFiles([]);
+            setImagePreviews([]);
+            setIsSubmitting(false);
+        }
+    }, [open]);
 
     const getStatusVariant = (status: 'Available' | 'Rented' | 'Maintenance') => {
         switch(status) {
