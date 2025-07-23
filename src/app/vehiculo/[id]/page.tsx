@@ -35,7 +35,7 @@ const CarouselPrevious = dynamic(() => import('@/components/ui/carousel').then(m
 const translations = {
   es: {
     adminLogin: "Acceso Admin",
-    bookNow: "Reservar Ahora",
+    bookNow: "Ver Flota",
     seats: "Asientos",
     transmission: "Transmisión",
     engine: "Motor",
@@ -61,7 +61,7 @@ const translations = {
   },
   en: {
     adminLogin: "Admin Login",
-    bookNow: "Book Now",
+    bookNow: "View Fleet",
     seats: "Seats",
     transmission: "Transmission",
     engine: "Engine",
@@ -88,9 +88,10 @@ const translations = {
 }
 
 const Logo = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-        <path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.4L19.6 8.2V15.8L12 19.6L4.4 15.8V8.2L12 4.4ZM12 12.5L7 9.8V14.2L12 16.9L17 14.2V9.8L12 12.5Z" fill="currentColor"/>
-    </svg>
+    <div className="flex items-center gap-2 text-primary">
+        <span className="text-2xl font-bold tracking-wider">VIRTUS</span>
+        <span className="text-lg font-semibold tracking-wide text-foreground">CAR RENTAL</span>
+    </div>
 );
 
 
@@ -130,18 +131,15 @@ export default function VehicleDetailPage() {
             }
         } catch (error) {
             console.error("Error fetching vehicle details:", error);
-            // Optionally show a toast or error message to the user
         } finally {
             setLoading(false);
         }
     };
 
     if(db) fetchVehicle();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleId, db]);
   
   React.useEffect(() => {
-    // This ensures date initialization only runs on the client
     setDate({
         from: new Date(),
         to: addDays(new Date(), 5),
@@ -195,8 +193,8 @@ export default function VehicleDetailPage() {
         dropoffDate: date?.to ? format(date.to, 'yyyy-MM-dd') : '',
         status: 'Pending Signature',
         agent: 'Online Booking',
-        insurance: selectedInsurance, // Save selected insurance details
-        totalCost: totalCost, // Save the calculated total cost
+        insurance: selectedInsurance,
+        totalCost: totalCost,
     };
     
     toast({
@@ -221,18 +219,16 @@ export default function VehicleDetailPage() {
         <div className="container mx-auto flex h-16 items-center px-4">
           <Link href="/" className="flex items-center gap-2">
             <Logo />
-            <span className="text-xl font-bold text-foreground">Virtus Car Rental</span>
           </Link>
-          <nav className="ml-auto flex items-center gap-2">
-             <Button variant="ghost" asChild>
+          <nav className="ml-auto flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" asChild>
               <Link href="/login">
-                <User className="mr-2" />
                 {t.adminLogin}
               </Link>
             </Button>
             <Button asChild>
               <Link href="/#fleet-section">
-                <Car className="mr-2" />
+                <Car className="mr-2 h-4 w-4" />
                 {t.bookNow}
               </Link>
             </Button>

@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Car, Users, Gauge, GitBranch, Loader2 } from 'lucide-react';
+import { ArrowRight, Car, Users, Gauge, GitBranch, Loader2, Mail, Phone, MapPin } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import type { Vehicle } from '@/lib/types';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
@@ -66,12 +66,11 @@ export default function RootPage() {
 
     React.useEffect(() => {
         if (!db) {
-            setLoading(false); // If db is not ready, don't show loader indefinitely
+            setLoading(false); 
             return;
         }
         
         setLoading(true);
-        // Query all vehicles to display the full fleet, ordered by make.
         const q = query(collection(db, 'vehicles'), orderBy('make'));
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -82,7 +81,6 @@ export default function RootPage() {
             setLoading(false);
         });
 
-        // Cleanup subscription on unmount
         return () => unsubscribe();
     }, [db]);
 
@@ -93,7 +91,12 @@ export default function RootPage() {
           <Link href="/" className="flex items-center gap-2">
             <Logo />
           </Link>
-          <nav className="ml-auto flex items-center gap-4">
+          <nav className="ml-auto flex items-center gap-2 sm:gap-4">
+             <Button variant="ghost" asChild>
+                <Link href="#contact-section">
+                    Contacto
+                </Link>
+            </Button>
             <Button variant="ghost" asChild>
               <Link href="/login">
                 Acceso Admin
@@ -132,9 +135,38 @@ export default function RootPage() {
         </section>
       </main>
       
-      <footer className="border-t bg-muted/50 mt-12">
-          <div className="container mx-auto py-6 text-center text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Virtus Car Rental S.R.L. Todos los derechos reservados.
+      <footer id="contact-section" className="border-t bg-muted/50 mt-12">
+          <div className="container mx-auto py-8 px-4 text-center">
+             <div className="grid md:grid-cols-3 gap-8 text-sm text-muted-foreground">
+                <div className="space-y-2">
+                    <h3 className="font-bold text-lg text-foreground mb-2">VIRTUS CAR RENTAL</h3>
+                    <p>Ofrecemos una experiencia de alquiler de vehículos confiable y de alta calidad, con una flota moderna para satisfacer todas sus necesidades de viaje en la República Dominicana.</p>
+                </div>
+                 <div className="space-y-2">
+                    <h3 className="font-bold text-lg text-foreground mb-2">Contacto</h3>
+                    <div className="flex items-center justify-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary"/>
+                        <p>Ruta 66, Salida del aeropuerto Las Americas, La Caleta, R.D.</p>
+                    </div>
+                     <div className="flex items-center justify-center gap-2">
+                        <Phone className="h-4 w-4 text-primary"/>
+                        <p>Tel: 809-549-0144 | WhatsApp: 809-357-6291</p>
+                    </div>
+                     <div className="flex items-center justify-center gap-2">
+                        <Mail className="h-4 w-4 text-primary"/>
+                        <p>virtuscr01@gmail.com</p>
+                    </div>
+                </div>
+                 <div className="space-y-2">
+                    <h3 className="font-bold text-lg text-foreground mb-2">Horarios</h3>
+                    <p>Lunes a Viernes: 8:00 AM - 6:00 PM</p>
+                    <p>Sábados: 9:00 AM - 1:00 PM</p>
+                    <p>Domingos: Cerrado</p>
+                </div>
+            </div>
+            <div className="border-t mt-8 pt-6 text-xs text-muted-foreground">
+                © {new Date().getFullYear()} Virtus Car Rental S.R.L. Todos los derechos reservados.
+            </div>
           </div>
       </footer>
     </div>
