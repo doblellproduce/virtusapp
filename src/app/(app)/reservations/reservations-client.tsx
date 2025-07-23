@@ -70,7 +70,6 @@ export default function ReservationsClient() {
 
     const isEditing = editingReservation !== null;
     
-    // QA Enhancement: Filter for available vehicles for new reservations
     const availableVehicles = vehicles.filter(v => v.status === 'Available');
 
     const handleOpenDialog = (reservation: Reservation | null = null) => {
@@ -330,8 +329,7 @@ export default function ReservationsClient() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {isEditing && editingReservation ? (
-                                        // If editing, show all vehicles in case the original vehicle is now unavailable, but add current one if not available
-                                         <>
+                                        <>
                                             {availableVehicles.map(v => (
                                                 <SelectItem key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</SelectItem>
                                             ))}
@@ -342,7 +340,6 @@ export default function ReservationsClient() {
                                             )}
                                         </>
                                     ) : (
-                                        // If creating, only show available vehicles
                                         availableVehicles.map(v => (
                                             <SelectItem key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</SelectItem>
                                         ))
@@ -385,5 +382,4 @@ export default function ReservationsClient() {
             </Dialog>
         </div>
     );
-
-    
+}
