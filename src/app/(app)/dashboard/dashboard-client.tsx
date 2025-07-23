@@ -11,10 +11,9 @@ import { Bar, BarChart, XAxis, YAxis, Tooltip } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { ArrowRight, Car, User, DollarSign, Wrench, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import type { Reservation, Vehicle } from '@/lib/types';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import type { Reservation } from '@/lib/types';
 
-// Define a type for invoices since we are fetching them now
+
 type Invoice = {
   id: string;
   customer: string;
@@ -24,6 +23,17 @@ type Invoice = {
   createdBy: string;
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
 };
+
+type InitialData = {
+   stats: {
+        totalRevenue: number;
+        activeRentals: number;
+        availableVehicles: number;
+        vehiclesInMaintenance: number;
+    };
+    recentReservations: Reservation[];
+    recentInvoices: Invoice[];
+}
 
 // Function to format currency, moved to module scope
 const formatCurrency = (value: number) => {
@@ -53,7 +63,7 @@ const chartData = [
 ];
 
 
-function StatCard({ title, value, icon: Icon, description, isLoading }: { title: string, value: string, icon: React.ElementType, description: string, isLoading?: boolean }) {
+function StatCard({ title, value, icon: Icon, description }: { title: string, value: string, icon: React.ElementType, description: string }) {
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -61,11 +71,7 @@ function StatCard({ title, value, icon: Icon, description, isLoading }: { title:
                 <Icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                {isLoading ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                ) : (
-                    <div className="text-2xl font-bold">{value}</div>
-                )}
+                <div className="text-2xl font-bold">{value}</div>
                 <p className="text-xs text-muted-foreground">{description}</p>
             </CardContent>
         </Card>
@@ -89,7 +95,7 @@ function RecentReservations({ reservations }: { reservations: Reservation[] }) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {reservations.slice(0, 5).map(res => (
+                        {reservations.map(res => (
                             <TableRow key={res.id}>
                                 <TableCell>
                                     <div className="font-medium">{res.customer}</div>
@@ -175,7 +181,7 @@ function RecentInvoices({ invoices }: { invoices: Invoice[] }) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                         {invoices.slice(0, 5).map(invoice => (
+                         {invoices.map(invoice => (
                             <TableRow key={invoice.id}>
                                 <TableCell>
                                     <div className="font-medium">{invoice.customer}</div>
@@ -199,54 +205,18 @@ function RecentInvoices({ invoices }: { invoices: Invoice[] }) {
     );
 }
 
-export default function DashboardClient() {
-    const { userProfile, db } = useAuth();
-    const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
-    const [reservations, setReservations] = React.useState<Reservation[]>([]);
-    const [invoices, setInvoices] = React.useState<Invoice[]>([]);
-    const [loading, setLoading] = React.useState(true);
+export default function DashboardClient({ initialData }: { initialData: InitialData }) {
+    const { userProfile } = useAuth();
+    
+    const { stats, recentInvoices, recentReservations } = initialData;
 
-    React.useEffect(() => {
-        if (!db) return;
-
-        const collectionsToMonitor = 3;
-        let collectionsLoaded = 0;
-
-        const onDataLoaded = () => {
-            collectionsLoaded++;
-            if (collectionsLoaded === collectionsToMonitor) {
-                setLoading(false);
-            }
-        };
-        
-        const unsubVehicles = onSnapshot(query(collection(db, 'vehicles')), (snapshot) => {
-            setVehicles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle)));
-            onDataLoaded();
-        }, (error) => { console.error("Error fetching vehicles:", error); onDataLoaded(); });
-
-        const unsubReservations = onSnapshot(query(collection(db, 'reservations')), (snapshot) => {
-            setReservations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation)));
-            onDataLoaded();
-        }, (error) => { console.error("Error fetching reservations:", error); onDataLoaded(); });
-
-        const unsubInvoices = onSnapshot(query(collection(db, 'invoices')), (snapshot) => {
-            setInvoices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invoice)));
-            onDataLoaded();
-        }, (error) => { console.error("Error fetching invoices:", error); onDataLoaded(); });
-        
-        return () => {
-            unsubVehicles();
-            unsubReservations();
-            unsubInvoices();
-        };
-
-    }, [db]);
-
-
-    const totalRevenue = !loading ? invoices.reduce((acc, inv) => acc + parseFloat(inv.amount || '0'), 0) : 0;
-    const activeRentals = !loading ? reservations.filter(r => r.status === 'Active').length : 0;
-    const availableVehicles = !loading ? vehicles.filter(v => v.status === 'Available').length : 0;
-    const vehiclesInMaintenance = !loading ? vehicles.filter(v => v.status === 'Maintenance').length : 0;
+    if (!stats) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <p>Could not load dashboard data. Please try again later.</p>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -255,31 +225,27 @@ export default function DashboardClient() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard 
                     title="Total Revenue" 
-                    value={formatCurrency(totalRevenue)}
+                    value={formatCurrency(stats.totalRevenue)}
                     icon={DollarSign}
                     description="+20.1% from last month"
-                    isLoading={loading}
                 />
                  <StatCard 
                     title="Active Rentals" 
-                    value={`+${activeRentals}`}
+                    value={`+${stats.activeRentals}`}
                     icon={User}
                     description="Currently on the road"
-                    isLoading={loading}
                 />
                  <StatCard 
                     title="Vehicles Available" 
-                    value={`${availableVehicles}`}
+                    value={`${stats.availableVehicles}`}
                     icon={Car}
                     description="Ready for new rentals"
-                    isLoading={loading}
                 />
                  <StatCard 
                     title="In Maintenance" 
-                    value={`${vehiclesInMaintenance}`}
+                    value={`${stats.vehiclesInMaintenance}`}
                     icon={Wrench}
                     description="Temporarily unavailable"
-                    isLoading={loading}
                 />
             </div>
 
@@ -288,11 +254,11 @@ export default function DashboardClient() {
                     <RevenueChart />
                 </div>
                  <div className="lg:col-span-3">
-                    <RecentInvoices invoices={invoices} />
+                    <RecentInvoices invoices={recentInvoices} />
                 </div>
             </div>
              <div className="grid gap-6 md:grid-cols-1">
-                <RecentReservations reservations={reservations} />
+                <RecentReservations reservations={recentReservations} />
             </div>
         </div>
     );
