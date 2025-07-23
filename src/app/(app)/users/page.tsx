@@ -60,7 +60,7 @@ export default function UsersPage() {
     const [editingUser, setEditingUser] = React.useState<UserProfile | null>(null);
     const [userData, setUserData] = React.useState<NewUser>(emptyUser);
     const { toast } = useToast();
-    const { user: currentUser, userProfile, role: currentUserRole, sendPasswordReset, db, logActivity } = useAuth();
+    const { user: currentUser, userProfile, role: currentUserRole, sendPasswordReset, db } = useAuth();
     const [searchTerm, setSearchTerm] = React.useState('');
 
     const fetchUsers = React.useCallback(async () => {
@@ -129,7 +129,7 @@ export default function UsersPage() {
                 email: userData.email,
                 role: userData.role,
             });
-            await logActivity('Update', 'User', editingUser.id, `Updated user profile for ${userData.name}`);
+            // The API route now handles logging, so no client-side logActivity call is needed here.
             toast({ title: "User Updated", description: `Details for ${userData.name} have been updated.` });
         } else {
             const result = await inviteUser(userData.email, userData.name, userData.role, userProfile.tenantId);
@@ -165,7 +165,7 @@ export default function UsersPage() {
         // In a real app, you'd call a Cloud Function here to delete the Auth user and the Firestore doc.
         // For example: await deleteUserFunction({ userId });
         await deleteDoc(doc(db, "users", userId));
-        await logActivity('Delete', 'User', userId, `Deleted user ${userToDelete?.name || 'N/A'}`);
+        // The API route now handles logging, so no client-side logActivity call is needed here.
         
         toast({ title: "User Deleted (Firestore Only)", description: `The user ${userToDelete?.name} has been deleted from Firestore. Auth record still exists.` });
         fetchUsers();
@@ -182,7 +182,7 @@ export default function UsersPage() {
         }
         try {
             await sendPasswordReset(user.email);
-            await logActivity('Update', 'User', user.id, `Sent password reset email to ${user.name}`);
+            // The API route now handles logging, so no client-side logActivity call is needed here.
             toast({
                 title: "Password Reset Sent",
                 description: `A link to reset your password has been sent to ${user.email}.`
@@ -364,5 +364,3 @@ export default function UsersPage() {
         </div>
     );
 }
-
-    

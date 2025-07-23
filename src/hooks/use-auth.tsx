@@ -6,6 +6,7 @@ import {
     onAuthStateChanged,
     sendPasswordResetEmail,
     signOut,
+    signInWithEmailAndPassword,
     type User,
     getAuth
 } from 'firebase/auth';
@@ -48,7 +49,6 @@ interface AuthContextType extends FirebaseServices {
   login: (email: string, pass: string) => Promise<any>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
-  logActivity: LogActivity;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,24 +84,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setFirebaseServices(services);
   }, []);
   
-  const logActivity: LogActivity = useCallback(async (action, entityType, entityId, details) => {
-        if (!firebaseServices.db || !userProfile) return;
-        try {
-            const logEntry: Omit<ActivityLog, 'id'> = {
-                timestamp: new Date().toISOString(),
-                user: userProfile.name || userProfile.email,
-                action,
-                entityType,
-                entityId,
-                details,
-                tenantId: userProfile.tenantId,
-            };
-            await addDoc(collection(firebaseServices.db, 'activityLogs'), logEntry);
-        } catch (error) {
-            console.error("Error logging activity: ", error);
-        }
-    }, [firebaseServices.db, userProfile]);
-
 
   useEffect(() => {
     if (!firebaseServices.auth || !firebaseServices.db) {
@@ -146,19 +128,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 
   const handleLogin = async (email: string, pass: string) => {
-    // The actual sign-in logic is now handled by the form, which calls the API route.
-    // This function can remain to fulfill the context type, but the form should be the source of truth.
+    if (!firebaseServices.auth) {
+        throw new Error("Firebase Auth is not initialized.");
+    }
+
+    // 1. Client-side sign-in
+    const userCredential = await signInWithEmailAndPassword(firebaseServices.auth, email, pass);
+    const idToken = await userCredential.user.getIdToken();
+    
+    // 2. Send token to server to create a session
     const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: pass }),
+        body: JSON.stringify({ idToken }),
     });
 
     const result = await response.json();
     if (!response.ok) {
-        throw new Error(result.error || "Server-side authentication failed.");
+        throw new Error(result.error || "Server-side session creation failed.");
     }
-    // Auth state will be updated by onAuthStateChanged listener, triggered by the cookie being set.
   };
 
   const handleLogout = async () => {
@@ -184,7 +172,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     login: handleLogin,
     logout: handleLogout,
     sendPasswordReset: handlePasswordReset,
-    logActivity,
     ...firebaseServices,
   };
 
@@ -202,5 +189,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

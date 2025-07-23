@@ -2,35 +2,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDB } from '@/lib/firebase/admin';
 import type { UserProfile } from '@/lib/types';
-import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { idToken } = await request.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    if (!idToken) {
+      return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
     }
-
-    // Authenticate the user with client SDK first to verify password
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    const idToken = await user.getIdToken();
     
     // Verify the token on the admin side to get claims and proceed securely
     const decodedToken = await adminAuth.verifyIdToken(idToken);
@@ -70,16 +49,14 @@ export async function POST(request: NextRequest) {
      let errorMessage = "An unexpected error occurred.";
        // Robust handling of common Firebase Auth errors
        switch (error.code) {
-         case 'auth/user-not-found':
-         case 'auth/wrong-password':
-         case 'auth/invalid-credential':
-            errorMessage = 'Invalid email or password. Please try again.';
+         case 'auth/id-token-expired':
+            errorMessage = 'Your session has expired. Please log in again.';
             break;
-         case 'auth/too-many-requests':
-            errorMessage = 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
+         case 'auth/argument-error':
+            errorMessage = 'The ID token provided is not valid.';
             break;
          default:
-            errorMessage = error.message || "An unexpected error occurred during login.";
+            errorMessage = error.message || "An unexpected error occurred during session creation.";
             break;
        }
     return NextResponse.json({ error: errorMessage }, { status: 401 });
