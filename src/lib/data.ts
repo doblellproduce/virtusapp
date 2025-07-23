@@ -1,5 +1,5 @@
 
-import type { Reservation, Vehicle, UserProfile, MaintenanceLog } from '@/lib/types';
+import type { Reservation, Vehicle, UserProfile, MaintenanceLog, Expense } from '@/lib/types';
 
 // This initial data is now only for reference and prototyping.
 // The live application will use Firestore.
@@ -21,14 +21,14 @@ export const initialUsers: Omit<UserProfile, 'id'>[] = [
     { name: 'Mark Williams', email: 'mark.w@example.com', role: 'Secretary' },
 ];
 
-export const initialExpenses = [
-    { id: 'EXP-001', description: 'Vehicle Maintenance - Toyota Raize', category: 'Maintenance', amount: '150.00', date: '2024-07-20', status: 'Paid' },
-    { id: 'EXP-002', description: 'Office Rent - August', category: 'Utilities', amount: '1200.00', date: '2024-08-01', status: 'Paid' },
+export const initialExpenses: Expense[] = [
+    { id: 'EXP-001', description: 'Vehicle Maintenance - Toyota Raize', category: 'Maintenance', amount: '150.00', date: '2024-07-20', status: 'Paid', createdBy: 'Admin User' },
+    { id: 'EXP-002', description: 'Office Rent - August', category: 'Utilities', amount: '1200.00', date: '2024-08-01', status: 'Paid', createdBy: 'Admin User' },
 ];
 
 export const initialMaintenanceLogs: MaintenanceLog[] = [
-    { id: 'LOG-001', vehicleId: 'some-firestore-id-4', vehicleName: 'Toyota Raize', date: '2023-12-15', serviceType: 'Oil Change', cost: '80.00', notes: 'Replaced oil and filter.' },
-    { id: 'LOG-002', vehicleId: 'some-firestore-id-6', vehicleName: 'Chevrolet Captiva', date: '2024-01-30', serviceType: 'Brake Service', cost: '250.00', notes: 'Replaced front brake pads and rotors.' },
+    { id: 'LOG-001', vehicleId: 'some-firestore-id-4', vehicleName: 'Toyota Raize', date: '2023-12-15', serviceType: 'Oil Change', cost: '80.00', notes: 'Replaced oil and filter.', createdBy: 'Admin User' },
+    { id: 'LOG-002', vehicleId: 'some-firestore-id-6', vehicleName: 'Chevrolet Captiva', date: '2024-01-30', serviceType: 'Brake Service', cost: '250.00', notes: 'Replaced front brake pads and rotors.', createdBy: 'Admin User' },
 ];
 
 export const insuranceOptions = [
