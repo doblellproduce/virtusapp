@@ -19,13 +19,15 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // If auth is not loading and a user exists, redirect to dashboard.
     if (!loading && user) {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
 
-  if (loading) {
+  // Show loader while auth state is being determined or if a user is found (and redirect is imminent).
+  if (loading || user) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -33,16 +35,7 @@ export default function LoginPage() {
     );
   }
   
-  // If not loading and there's a user, we're in the process of redirecting, so keep showing loader.
-  if(user) {
-    return (
-        <div className="flex min-h-screen items-center justify-center bg-background">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-    );
-  }
-
-
+  // If not loading and no user, show the login form.
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
