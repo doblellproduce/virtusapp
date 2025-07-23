@@ -6,10 +6,13 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('firebaseIdToken');
   const { pathname } = request.nextUrl;
 
+  const isProtectedRoute = !['/login', '/contrato', '/vehiculo', '/'].some(path => pathname.startsWith(path) || pathname === path.slice(0,-1));
+
   // If trying to access a protected route without a token, redirect to login
-  if (!token && !pathname.startsWith('/login')) {
+  if (isProtectedRoute && !token) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
+    url.searchParams.set('redirectedFrom', pathname);
     return NextResponse.redirect(url);
   }
 
@@ -30,15 +33,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api (API routes are excluded by default in this pattern)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - / (the public root page)
-     * - /vehiculo (public vehicle detail pages)
-     * - /contrato (public contract page)
-     * - /login (the login page itself)
+     * - public assets (images, etc.)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|vehiculo|contrato|login|$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useContext, createContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, createContext, useCallback } from 'react';
 import {
     onAuthStateChanged,
     sendPasswordResetEmail,
@@ -71,63 +71,71 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const firebaseServices = useMemo(getClientFirebaseServices, []);
+  const firebaseServices = getClientFirebaseServices();
+
+  const fetchUserProfile = useCallback((authUser: User, db: Firestore) => {
+    const userDocRef = doc(db, 'users', authUser.uid);
+    return onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+        setUserProfile(profileData);
+        setRole(profileData.role);
+      } else {
+        setUserProfile(null);
+        setRole(null);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error in user profile snapshot listener:", error);
+      setUserProfile(null);
+      setRole(null);
+      setLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     if (!firebaseServices.auth || !firebaseServices.db) {
-        setLoading(false); 
-        return;
+      setLoading(false);
+      return;
     }
 
     const { auth, db } = firebaseServices;
-    
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setUser(authUser);
       if (authUser) {
-        // We still start loading when we have a user, before fetching profile
-        if (!loading) setLoading(true); 
-        const userDocRef = doc(db, 'users', authUser.uid);
-        const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-                setUserProfile(profileData);
-                setRole(profileData.role);
-            } else {
-                setUserProfile(null);
-                setRole(null);
-            }
-             // Loading is false after we have a definitive user profile state
-             setLoading(false);
-        }, (error) => {
-           console.error("Error in user profile snapshot listener:", error);
-           setUserProfile(null);
-           setRole(null);
-           setLoading(false);
+        setLoading(true);
+        
+        // Sync token with server-side cookie
+        const token = await authUser.getIdToken();
+        await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
         });
+
+        const unsubProfile = fetchUserProfile(authUser, db);
         return () => unsubProfile();
       } else {
-        // **FIX**: If there's no authenticated user, stop loading immediately.
-        // This is the key change that prevents the infinite loading screen.
+        // Clear user data and cookie
         setUserProfile(null);
         setRole(null);
+        await fetch('/api/auth', { method: 'DELETE' });
         setLoading(false);
       }
     });
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firebaseServices]);
+  }, [firebaseServices, fetchUserProfile]);
 
   const handleLogin = (email: string, pass: string) => {
     if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
     return signInWithEmailAndPassword(firebaseServices.auth, email, pass);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
-    // Set a cookie to indicate manual logout to help middleware decide
-    document.cookie = "firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    return signOut(firebaseServices.auth);
+    await signOut(firebaseServices.auth);
   };
 
   const handlePasswordReset = (email: string) => {
