@@ -1,8 +1,47 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
+
+    // Vehicles can be read by anyone, but only modified by authenticated users.
+    match /vehicles/{vehicleId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Users can only read and update their own profile.
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // Admin should be able to create/delete users via a backend function, not direct client access.
+      allow create, delete: if false; 
+    }
+
+    // All other business-critical collections require authentication for any access.
+    match /reservations/{document=**} {
       allow read, write: if request.auth != null;
+    }
+    match /customers/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /invoices/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /expenses/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /maintenanceLogs/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /documents/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /contracts/{document=**} {
+        allow read, write: if request.auth != null;
+    }
+    match /activityLogs/{document=**} {
+      // Only authenticated users can create logs. Reading should be restricted to admins via backend.
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
     }
   }
 }
