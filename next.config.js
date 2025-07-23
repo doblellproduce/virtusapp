@@ -14,9 +14,9 @@ const nextConfig = {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        process: require.resolve('process/browser'),
-        stream: require.resolve('stream-browserify'),
-        zlib: require.resolve('browserify-zlib'),
+        "process": "process/browser",
+        "stream": "stream-browserify",
+        "zlib": "browserify-zlib",
       };
     }
 
