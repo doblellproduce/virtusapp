@@ -2,35 +2,23 @@ import * as React from 'react';
 import DashboardClient from './dashboard-client';
 import { adminDB } from '@/lib/firebase/admin';
 import type { Reservation, Vehicle, Invoice } from '@/lib/types';
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
-
-// Define a type for invoices since we are fetching them now
-type FetchedInvoice = {
-  id: string;
-  customer: string;
-  date: string; // Assuming Firestore stores date as a string 'YYYY-MM-DD'
-  amount: string;
-  status: 'Paid' | 'Pending' | 'Overdue' | 'Draft';
-  createdBy: string;
-  paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
-};
 
 // This function will run on the server to fetch all required data in parallel
 async function getDashboardData() {
   try {
-    const reservationsQuery = collection(adminDB, 'reservations');
-    const vehiclesQuery = collection(adminDB, 'vehicles');
-    const invoicesQuery = collection(adminDB, 'invoices');
+    const reservationsQuery = adminDB.collection('reservations');
+    const vehiclesQuery = adminDB.collection('vehicles');
+    const invoicesQuery = adminDB.collection('invoices');
 
     const [reservationsSnapshot, vehiclesSnapshot, invoicesSnapshot] = await Promise.all([
-      getDocs(reservationsQuery),
-      getDocs(vehiclesQuery),
-      getDocs(invoicesQuery),
+      reservationsQuery.get(),
+      vehiclesQuery.get(),
+      invoicesQuery.get(),
     ]);
 
     const reservations = reservationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
     const vehicles = vehiclesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-    const invoices = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FetchedInvoice));
+    const invoices = invoicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invoice));
     
     // Perform aggregations on the server
     const totalRevenue = invoices.reduce((acc, inv) => acc + parseFloat(inv.amount || '0'), 0);
