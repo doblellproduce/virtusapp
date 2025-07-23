@@ -7,9 +7,6 @@ import {
     sendPasswordResetEmail,
     signOut,
     type User,
-    signInWithEmailAndPassword,
-    type UserCredential,
-    type Auth,
     getAuth
 } from 'firebase/auth';
 import { doc, onSnapshot, getFirestore, type Firestore, addDoc, collection, getDoc } from 'firebase/firestore';
@@ -31,7 +28,7 @@ const firebaseConfig = {
 // Define the shape of the context
 interface FirebaseServices {
   app: FirebaseApp | null;
-  auth: Auth | null;
+  auth: ReturnType<typeof getAuth> | null;
   db: Firestore | null;
   storage: FirebaseStorage | null;
 }
@@ -48,7 +45,7 @@ interface AuthContextType extends FirebaseServices {
   userProfile: UserProfile | null;
   loading: boolean;
   role: UserRole | null;
-  login: (email: string, pass: string) => Promise<UserCredential>;
+  login: (email: string, pass: string) => Promise<any>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logActivity: LogActivity;
@@ -116,14 +113,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribeAuth = onAuthStateChanged(firebaseServices.auth, async (authUser) => {
       setUser(authUser);
       if (authUser) {
-        // Sync token with server-side cookie
-        const token = await authUser.getIdToken();
-        await fetch('/api/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
-        });
-        
         // Now fetch profile
         const userDocRef = doc(firebaseServices.db as Firestore, 'users', authUser.uid);
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
@@ -148,8 +137,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
         setUserProfile(null);
         setRole(null);
-        // Clear server-side cookie on logout
-        await fetch('/api/auth', { method: 'DELETE' });
         setLoading(false);
       }
     });
@@ -159,31 +146,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 
   const handleLogin = async (email: string, pass: string) => {
-    if (!firebaseServices.auth || !firebaseServices.db) throw new Error("Firebase Auth is not initialized.");
-    const credentials = await signInWithEmailAndPassword(firebaseServices.auth, email, pass);
-    
-    // We can't use the logActivity helper here because userProfile is not yet set.
-    // We fetch it manually. This is a special case for login.
-    const userDoc = await getDoc(doc(firebaseServices.db, 'users', credentials.user.uid));
-    const profile = userDoc.data() as UserProfile;
-    
-    await addDoc(collection(firebaseServices.db, 'activityLogs'), {
-        timestamp: new Date().toISOString(),
-        user: profile.name || profile.email,
-        action: 'Login',
-        entityType: 'Auth',
-        entityId: credentials.user.uid,
-        details: `User ${profile.name} logged in.`,
-        tenantId: profile.tenantId,
+    // The actual sign-in logic is now handled by the form, which calls the API route.
+    // This function can remain to fulfill the context type, but the form should be the source of truth.
+    const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass }),
     });
 
-    return credentials;
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.error || "Server-side authentication failed.");
+    }
+    // Auth state will be updated by onAuthStateChanged listener, triggered by the cookie being set.
   };
 
   const handleLogout = async () => {
     if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
-    await logActivity('Logout', 'Auth', user?.uid || 'unknown', `User ${userProfile?.name || 'unknown'} logged out.`);
     await signOut(firebaseServices.auth);
+    // Also clear the server-side session
+    await fetch('/api/auth', { method: 'DELETE' });
+    setUser(null);
+    setUserProfile(null);
+    setRole(null);
   };
 
   const handlePasswordReset = (email: string) => {

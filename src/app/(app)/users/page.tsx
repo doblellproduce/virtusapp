@@ -134,7 +134,7 @@ export default function UsersPage() {
         } else {
             const result = await inviteUser(userData.email, userData.name, userData.role, userProfile.tenantId);
              if (result.success && result.newUser) {
-                await logActivity('Create', 'User', result.newUser.id, `Invited new user: ${result.newUser.name}`);
+                // The API route now handles logging, so no client-side logActivity call is needed here.
                 toast({ title: "User Invited Successfully", description: result.message });
             } else {
                 toast({ variant: 'destructive', title: "Error Inviting User", description: result.message });
@@ -303,7 +303,7 @@ export default function UsersPage() {
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                             <AlertDialogAction onClick={() => handleDelete(user.id)} className="bg-destructive hover:bg-destructive/90">Yes, delete user</AlertDialogAction>
-                                                        </AlertDialogFooter>
+                                                        </Footer>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
                                             </DropdownMenuContent>

@@ -51,6 +51,7 @@ export default function LoginForm() {
       // **FIX**: Explicit and immediate redirection after successful login.
       // This is the most reliable way to handle post-login navigation.
       router.push('/dashboard');
+      router.refresh(); // Ensures the layout re-evaluates the new auth state
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";
        // Robust handling of common Firebase Auth errors
@@ -68,7 +69,7 @@ export default function LoginForm() {
             break;
          default:
             console.error("Login Error:", error); 
-            errorMessage = "An unexpected error occurred during login.";
+            errorMessage = error.message || "An unexpected error occurred during login.";
             break;
        }
        setError(errorMessage);
