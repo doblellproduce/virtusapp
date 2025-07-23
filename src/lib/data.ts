@@ -5,8 +5,8 @@ import type { Reservation, Vehicle, UserProfile, MaintenanceLog, Expense } from 
 // The live application will use Firestore.
 
 export const initialReservations: Reservation[] = [
-    { id: 'RES-001', customer: 'Liam Johnson', vehicleId: 'some-firestore-id-3', vehicle: 'Hyundai Accent', pickupDate: '2024-07-25', dropoffDate: '2024-07-28', status: 'Completed', agent: 'Admin User', totalCost: 250.00 },
-    { id: 'RES-002', customer: 'Olivia Smith', vehicleId: 'some-firestore-id-5', vehicle: 'Chevrolet Tracker', pickupDate: '2024-07-26', dropoffDate: '2024-08-02', status: 'Active', agent: 'Sarah Johnson', totalCost: 600.00 },
+    { id: 'RES-001', customerId: 'CUST-001', customerName: 'Liam Johnson', vehicleId: 'some-firestore-id-3', vehicle: 'Hyundai Accent', pickupDate: '2024-07-25', dropoffDate: '2024-07-28', status: 'Completed', agent: 'Admin User', totalCost: 250.00 },
+    { id: 'RES-002', customerId: 'CUST-002', customerName: 'Olivia Smith', vehicleId: 'some-firestore-id-5', vehicle: 'Chevrolet Tracker', pickupDate: '2024-07-26', dropoffDate: '2024-08-02', status: 'Active', agent: 'Sarah Johnson', totalCost: 600.00 },
 ];
 
 export const initialInvoices = [
