@@ -1,11 +1,16 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to all collections for any authenticated user.
-    // This is a secure default for an admin panel where all users must be logged in.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Allow public read access to vehicles for the home page fleet display
+    match /vehicles/{vehicleId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Secure all other collections, allowing access only to authenticated users.
+    // This covers users, reservations, invoices, expenses, etc.
+    match /{path=**}/documents/{documentId} {
+        allow read, write: if request.auth != null;
     }
   }
 }
