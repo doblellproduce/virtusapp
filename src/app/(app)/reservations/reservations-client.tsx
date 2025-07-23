@@ -329,11 +329,18 @@ export default function ReservationsClient() {
                                     <SelectValue placeholder="Select a vehicle" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {isEditing ? (
-                                        // If editing, show all vehicles in case the original vehicle is now unavailable
-                                        vehicles.map(v => (
-                                            <SelectItem key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</SelectItem>
-                                        ))
+                                    {isEditing && editingReservation ? (
+                                        // If editing, show all vehicles in case the original vehicle is now unavailable, but add current one if not available
+                                         <>
+                                            {availableVehicles.map(v => (
+                                                <SelectItem key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</SelectItem>
+                                            ))}
+                                            {!availableVehicles.find(v => v.id === editingReservation.vehicleId) && (
+                                                <SelectItem key={editingReservation.vehicleId} value={editingReservation.vehicleId}>
+                                                   (Not Available) {editingReservation.vehicle}
+                                                </SelectItem>
+                                            )}
+                                        </>
                                     ) : (
                                         // If creating, only show available vehicles
                                         availableVehicles.map(v => (

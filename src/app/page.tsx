@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Car, Users, Gauge, GitBranch, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import type { Vehicle } from '@/lib/types';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 
 const Logo = () => (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
@@ -70,7 +70,8 @@ export default function RootPage() {
         }
         
         setLoading(true);
-        const q = query(collection(db, 'vehicles'), where('status', '==', 'Available'));
+        // Query all vehicles to display the full fleet, ordered by make.
+        const q = query(collection(db, 'vehicles'), orderBy('make'));
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
             setVehicles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle)));
