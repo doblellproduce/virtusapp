@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { onSnapshot, collection, addDoc, doc, updateDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { CustomerCombobox } from '@/components/customer-combobox';
 
-type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle'>;
+type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection'>;
 
 const emptyReservation: NewReservation = {
     customerId: '',
@@ -292,6 +292,14 @@ export default function ReservationsClient() {
         res.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         res.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    
+    const handleStartDeparture = (reservation: Reservation) => {
+        // Placeholder for now. This will open the new inspection modal.
+        toast({
+            title: "Función en Desarrollo",
+            description: `Iniciar proceso de salida para la reserva ${reservation.id}.`,
+        });
+    };
 
     return (
         <div className="space-y-6">
@@ -357,13 +365,18 @@ export default function ReservationsClient() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleOpenDialog(res)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Edit
+                                                <DropdownMenuItem onClick={() => handleStartDeparture(res)} disabled={res.status !== 'Upcoming'}>
+                                                    <FileCheck className="mr-2 h-4 w-4" />
+                                                    Iniciar Proceso de Salida
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={res.status === 'Cancelled' || res.status === 'Pending Signature'}>
                                                     <FileText className="mr-2 h-4 w-4" />
                                                     Generate Invoice
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleOpenDialog(res)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Edit
                                                 </DropdownMenuItem>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
