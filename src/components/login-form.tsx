@@ -48,12 +48,12 @@ export default function LoginForm() {
     setIsSubmitting(true);
     try {
       await login(data.email, data.password);
-      // **SOLUCIÓN CLAVE**: Redirección explícita e inmediata tras login exitoso.
-      // Esto evita depender de que otros componentes reaccionen al cambio de estado.
+      // **FIX**: Explicit and immediate redirection after successful login.
+      // This is the most reliable way to handle post-login navigation.
       router.push('/dashboard');
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";
-       // Manejo robusto de errores comunes de Firebase Auth
+       // Robust handling of common Firebase Auth errors
        switch (error.code) {
          case 'auth/user-not-found':
          case 'auth/wrong-password':
@@ -67,14 +67,12 @@ export default function LoginForm() {
             errorMessage = 'Network error. Please check your internet connection and try again.';
             break;
          default:
-            // Log del error real para debugging en el servidor o consola
             console.error("Login Error:", error); 
             errorMessage = "An unexpected error occurred during login.";
             break;
        }
        setError(errorMessage);
-    } finally {
-        // Asegurarse de que el estado de carga se desactive si hay un error
+       // Ensure the submitting state is turned off on failure
        setIsSubmitting(false);
     }
   };
