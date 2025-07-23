@@ -30,9 +30,10 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 
 const Logo = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-        <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" fill="currentColor" />
-    </svg>
+    <div className="flex items-center gap-2 text-primary">
+        <span className="text-2xl font-bold tracking-wider">VIRTUS</span>
+        <span className="text-lg font-semibold tracking-wide text-foreground">CAR RENTAL</span>
+    </div>
 );
 
 const ContractHeader = () => (
@@ -186,7 +187,6 @@ export default function ContractForm() {
              <header className="mb-4 text-center">
                  <Link href="/" className="flex items-center gap-2 justify-center">
                     <Logo />
-                    <span className="text-2xl font-bold text-foreground">Virtus Car Rental</span>
                 </Link>
             </header>
             
