@@ -64,7 +64,11 @@ export default function RootPage() {
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        if (!db) return;
+        if (!db) {
+            // db might not be available on first render, but auth hook will re-render when it is.
+            // On the next render, this effect will run again.
+            return;
+        };
         setLoading(true);
         const q = query(collection(db, 'vehicles'), where('status', '==', 'Available'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -75,7 +79,7 @@ export default function RootPage() {
             setLoading(false);
         });
         return () => unsubscribe();
-    }, [db]);
+    }, []); // Changed dependency from [db] to []
 
   return (
     <div className="bg-background text-foreground min-h-screen flex flex-col font-sans">

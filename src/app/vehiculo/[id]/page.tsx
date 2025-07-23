@@ -137,6 +137,7 @@ export default function VehicleDetailPage() {
     };
 
     if(db) fetchVehicle();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleId, db]);
   
   React.useEffect(() => {
