@@ -1,6 +1,12 @@
 
 import {NextRequest, NextResponse} from 'next/server';
 import { generateSmartReply, type SmartReplyInput } from '@/ai/flows/smart-reply-tool';
+import {googleAI} from '@genkit-ai/googleai';
+import {configureGenkit} from 'genkit';
+
+configureGenkit({
+  plugins: [googleAI()],
+});
 
 export async function POST(request: NextRequest) {
   try {
