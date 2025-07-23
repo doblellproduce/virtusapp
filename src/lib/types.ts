@@ -53,3 +53,13 @@ export type MaintenanceLog = {
     cost: string;
     notes: string;
 };
+
+export type ActivityLog = {
+    id: string;
+    timestamp: string; // Should be an ISO string
+    user: string; // User's name or email
+    action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel';
+    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth';
+    entityId: string;
+    details: string;
+};

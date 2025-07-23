@@ -27,6 +27,7 @@ import {
   Sparkles,
   LogOut,
   Loader2,
+  History,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -97,6 +98,7 @@ const menuItems = [
   { href: '/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/calendar', label: 'Booking Calendar', icon: Calendar },
   { href: '/smart-reply', label: 'Smart Reply', icon: Sparkles },
+  { href: '/logs', label: 'Activity Log', icon: History, adminOnly: true },
 ];
 
 export default function AdminLayout({
