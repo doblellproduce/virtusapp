@@ -235,9 +235,7 @@ export default function ContractForm() {
                                         <div><Label>Placa / Plate No.</Label><Input value={vehicle.plate} readOnly /></div>
                                         <div><Label>Color / Color</Label><Input value="N/A" readOnly /></div>
                                         <div><Label>Fecha de Salida</Label><Input value={format(new Date(reservation.pickupDate), 'MM/dd/yyyy')} readOnly /></div>
-                                        <div><Label>Hora de Salida</Label><Input value="10:00 AM" readOnly /></div>
                                         <div><Label>Fecha de Entrada</Label><Input value={format(new Date(reservation.dropoffDate), 'MM/dd/yyyy')} readOnly /></div>
-                                        <div><Label>Hora de Entrada</Label><Input value="10:00 AM" readOnly /></div>
                                         <div><Label>Tipo de Seguro</Label><Input value={reservation.insurance.title.es} readOnly /></div>
                                         <div><Label>Depósito de Seguridad</Label><Input value={`$${reservation.insurance.deposit.toFixed(2)}`} readOnly /></div>
                                         <div><Label>Deducible</Label><Input value={`$${reservation.insurance.deductible.toFixed(2)}`} readOnly /></div>
