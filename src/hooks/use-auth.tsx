@@ -84,6 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
       if (authUser) {
+        setLoading(true); // Start loading when we have a user, before fetching profile
         const userDocRef = doc(db, 'users', authUser.uid);
         const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
