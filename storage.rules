@@ -1,23 +1,8 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Vehicle images are publicly readable, but only admins/supervisors can write.
-    match /vehicles/{allPaths=**} {
-      allow read;
-      allow write: if request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
-    }
-
-    // Customer documents can be written by authenticated users, but only read by admins/supervisors.
-    match /documents/{allPaths=**} {
-      allow read: if request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
-      allow write: if request.auth != null;
-    }
-
-    // Default deny all other paths
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }
