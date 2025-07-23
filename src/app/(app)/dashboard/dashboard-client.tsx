@@ -24,6 +24,11 @@ type Invoice = {
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
 };
 
+type ChartData = {
+    month: string;
+    revenue: number;
+}
+
 type InitialData = {
    stats: {
         totalRevenue: number;
@@ -33,6 +38,7 @@ type InitialData = {
     };
     recentReservations: Reservation[];
     recentInvoices: Invoice[];
+    chartData: ChartData[];
 }
 
 // Function to format currency, moved to module scope
@@ -51,17 +57,6 @@ const chartConfig = {
     color: "hsl(var(--primary))",
   },
 };
-
-const chartData = [
-  { month: "Jan", revenue: 18600 },
-  { month: "Feb", revenue: 30500 },
-  { month: "Mar", revenue: 23700 },
-  { month: "Apr", revenue: 27800 },
-  { month: "May", revenue: 18900 },
-  { month: "Jun", revenue: 23900 },
-  { month: "Jul", revenue: 34900 },
-];
-
 
 function StatCard({ title, value, icon: Icon, description }: { title: string, value: string, icon: React.ElementType, description: string }) {
     return (
@@ -129,7 +124,7 @@ function RecentReservations({ reservations }: { reservations: Reservation[] }) {
     );
 }
 
-function RevenueChart() {
+function RevenueChart({ data }: { data: ChartData[] }) {
     return (
         <Card>
             <CardHeader>
@@ -138,7 +133,7 @@ function RevenueChart() {
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                    <BarChart data={chartData} accessibilityLayer>
+                    <BarChart data={data} accessibilityLayer>
                         <XAxis
                             dataKey="month"
                             stroke="#888888"
@@ -208,7 +203,7 @@ function RecentInvoices({ invoices }: { invoices: Invoice[] }) {
 export default function DashboardClient({ initialData }: { initialData: InitialData }) {
     const { userProfile } = useAuth();
     
-    const { stats, recentInvoices, recentReservations } = initialData;
+    const { stats, recentInvoices, recentReservations, chartData } = initialData;
 
     if (!stats) {
         return (
@@ -251,7 +246,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                 <div className="lg:col-span-4">
-                    <RevenueChart />
+                    <RevenueChart data={chartData}/>
                 </div>
                  <div className="lg:col-span-3">
                     <RecentInvoices invoices={recentInvoices} />
