@@ -52,24 +52,21 @@ export default function LoginForm() {
       // No need to push here, as it might cause race conditions with the auth state listener.
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";
-       // More specific error handling based on the response from the API route
-        if (error.code) {
-           switch (error.code) {
-             case 'auth/user-not-found':
-             case 'auth/wrong-password':
-             case 'auth/invalid-credential':
-                errorMessage = 'Invalid email or password. Please try again.';
-                break;
-             case 'auth/too-many-requests':
-                errorMessage = 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
-                break;
-             default:
-                errorMessage = error.message || "An unexpected error occurred during login.";
-                break;
-           }
-        } else if (typeof error.message === 'string') {
-            errorMessage = error.message;
-        }
+       // More specific error handling based on the Firebase Auth error codes
+       switch (error.code) {
+         case 'auth/user-not-found':
+         case 'auth/wrong-password':
+         case 'auth/invalid-credential':
+            errorMessage = 'Invalid email or password. Please try again.';
+            break;
+         case 'auth/too-many-requests':
+            errorMessage = 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
+            break;
+         default:
+            // This will catch the "Server-side session creation failed" error from our hook
+            errorMessage = error.message || "An unexpected error occurred during login.";
+            break;
+       }
        setError(errorMessage);
     }
   };
