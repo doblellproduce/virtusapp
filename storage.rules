@@ -1,37 +1,34 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
   
-    // Helper function for staff roles
+    // Helper function to check for admin/staff roles
     function isStaff() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
+      return request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
 
-    // Vehicle images: Publicly readable, only staff can write/delete.
-    match /vehicles/{fileName} {
+    // Vehicle images can be read by anyone, but only staff can upload/delete them.
+    match /vehicles/{imageName} {
       allow read: if true;
       allow write: if isStaff();
     }
 
-    // Inspection photos: Only authenticated users can write. Only staff can read them later.
-    // The path is structured like: inspections/{reservationId}/{inspectionType}/{photoName}
-    match /inspections/{reservationId}/{inspectionType}/{fileName} {
-      allow read: if isStaff();
-      // Allow write if the user is creating a reservation for themselves, or if they are staff.
-      allow write: if request.auth.uid != null;
+    // Inspection photos can only be created, read, and deleted by staff members.
+    // The path contains the reservation ID, which can be used for more granular rules if needed later.
+    match /inspections/{reservationId}/{imageName} {
+      allow read, write, delete: if isStaff();
     }
     
-    // Signatures: Same logic as inspection photos.
-    match /signatures/{reservationId}/{inspectionType}/{fileName} {
-       allow read: if isStaff();
-       allow write: if request.auth.uid != null;
+    // Customer signatures follow the same logic as inspection photos.
+    match /signatures/{reservationId}/{imageName} {
+       allow read, write, delete: if isStaff();
     }
 
-    // General documents: Only staff can manage.
-    match /documents/{fileName} {
-        allow read, write: if isStaff();
+    // General documents can only be managed by staff.
+    match /documents/{documentId}/{fileName} {
+      allow read, write, delete: if isStaff();
     }
   }
 }
