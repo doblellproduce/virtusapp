@@ -9,10 +9,10 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, ShieldCheck, Users, Gauge, GitBranch, User, Car, FileSignature, Globe, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ShieldCheck, Users, Gauge, GitBranch, User, Car, FileSignature, Globe, Loader2, LogIn, UserPlus } from 'lucide-react';
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { addDays, format } from "date-fns"
+import { addDays, format, differenceInCalendarDays } from "date-fns"
 import { es } from 'date-fns/locale';
 import type { DateRange } from "react-day-picker"
 import { insuranceOptions } from '@/lib/data';
@@ -22,8 +22,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { doc, getDoc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
+import LoginForm from '@/components/login-form';
+import RegisterForm from '@/components/register-form';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 const Carousel = dynamic(() => import('@/components/ui/carousel').then(m => m.Carousel), { ssr: false, loading: () => <div className="aspect-video w-full flex items-center justify-center bg-muted rounded-lg"><Loader2 className="h-8 w-8 animate-spin"/></div> });
 const CarouselContent = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselContent), { ssr: false });
@@ -34,56 +39,50 @@ const CarouselPrevious = dynamic(() => import('@/components/ui/carousel').then(m
 
 const translations = {
   es: {
-    adminLogin: "Acceso Admin",
-    bookNow: "Ver Flota",
     seats: "Asientos",
     transmission: "Transmisión",
     engine: "Motor",
     bookYourRental: "Reserva tu Alquiler",
-    bookDescription: "Selecciona las fechas, seguro y introduce tus datos para empezar.",
-    fullName: "Nombre Completo",
-    email: "Correo Electrónico",
-    phone: "Número de Teléfono",
     rentalDates: "Fechas de Alquiler",
     loadingDates: "Cargando fechas...",
     insuranceOptions: "Opciones de Seguro",
     day: "día",
     days: "días",
-    taxesAndFees: "Impuestos y Tasas",
-    calculatedAtCheckout: "Calculado al finalizar",
     vehicleCost: "Costo del vehículo",
     insuranceCost: "Costo del seguro",
     estimatedTotal: "Total Estimado",
-    reserveAndSign: "Reservar y Firmar Contrato",
-    toastTitle: "Creando Reserva...",
-    toastDescription: "Redirigiendo para firmar el contrato.",
+    reserveNow: "Reservar Ahora",
+    loginToBook: "Iniciar Sesión para Reservar",
+    loginToBookDescription: "Por favor, inicia sesión o crea una cuenta para completar tu reserva.",
     loadingVehicle: "Cargando detalles del vehículo...",
+    bookingSuccessTitle: "¡Reserva Creada!",
+    bookingSuccessDescription: "Tu reserva ha sido creada exitosamente. Puedes ver los detalles en tu panel.",
+    bookingErrorTitle: "Error en la Reserva",
+    bookingErrorDescription: "No se pudo crear la reserva. Por favor, intenta de nuevo.",
+    vehicleNotAvailable: "Este vehículo no está disponible para las fechas seleccionadas.",
   },
   en: {
-    adminLogin: "Admin Login",
-    bookNow: "View Fleet",
     seats: "Seats",
     transmission: "Transmission",
     engine: "Engine",
     bookYourRental: "Book Your Rental",
-    bookDescription: "Select dates, insurance, and enter your details to get started.",
-    fullName: "Full Name",
-    email: "Email Address",
-    phone: "Phone Number",
     rentalDates: "Rental Dates",
     loadingDates: "Loading dates...",
     insuranceOptions: "Insurance Options",
     day: "day",
     days: "days",
-    taxesAndFees: "Taxes and Fees",
-    calculatedAtCheckout: "Calculated at checkout",
     vehicleCost: "Vehicle cost",
     insuranceCost: "Insurance cost",
     estimatedTotal: "Estimated Total",
-    reserveAndSign: "Reserve & Sign Contract",
-    toastTitle: "Creating Reservation...",
-    toastDescription: "Redirecting to sign the contract.",
+    reserveNow: "Reserve Now",
+    loginToBook: "Login to Book",
+    loginToBookDescription: "Please log in or create an account to complete your reservation.",
     loadingVehicle: "Loading vehicle details...",
+    bookingSuccessTitle: "Reservation Created!",
+    bookingSuccessDescription: "Your reservation has been successfully created. You can view the details in your dashboard.",
+    bookingErrorTitle: "Booking Error",
+    bookingErrorDescription: "Could not create reservation. Please try again.",
+    vehicleNotAvailable: "This vehicle is not available for the selected dates.",
   }
 }
 
@@ -100,21 +99,17 @@ export default function VehicleDetailPage() {
   const vehicleId = params.id as string;
   const router = useRouter();
   const { toast } = useToast();
-  const { db } = useAuth();
+  const { db, user, userProfile, loading: authLoading } = useAuth();
   
   const [vehicle, setVehicle] = React.useState<Vehicle | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [date, setDate] = React.useState<DateRange | undefined>(undefined);
   const [selectedInsuranceId, setSelectedInsuranceId] = React.useState<string>(insuranceOptions[0].id);
   const [isClient, setIsClient] = React.useState(false);
   const [lang, setLang] = React.useState<'es' | 'en'>('es');
   const t = translations[lang];
-
-  const [customerInfo, setCustomerInfo] = React.useState({
-    name: '',
-    email: '',
-    phone: ''
-  });
+  const [authModalOpen, setAuthModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const fetchVehicle = async () => {
@@ -147,7 +142,110 @@ export default function VehicleDetailPage() {
     setIsClient(true);
   }, []);
 
-  if (loading) {
+  // Close auth modal if user logs in
+  React.useEffect(() => {
+      if (user && authModalOpen) {
+          setAuthModalOpen(false);
+      }
+  }, [user, authModalOpen]);
+
+  const checkVehicleAvailability = async (vehicleId: string, pickup: string, dropoff: string) => {
+    if(!db) return true;
+    
+    let reservationsRef = query(
+        collection(db, "reservations"),
+        where("vehicleId", "==", vehicleId),
+        where("status", "in", ["Upcoming", "Active"])
+    );
+    const querySnapshot = await getDocs(reservationsRef);
+    const conflictingReservations = querySnapshot.docs.map(doc => doc.data());
+
+    for (const res of conflictingReservations) {
+        const existingPickup = new Date(res.pickupDate);
+        const existingDropoff = new Date(res.dropoffDate);
+        const newPickup = new Date(pickup);
+        const newDropoff = new Date(dropoff);
+        
+        if (newPickup < existingDropoff && newDropoff > existingPickup) {
+            toast({
+                variant: 'destructive',
+                title: 'Booking Conflict',
+                description: t.vehicleNotAvailable,
+                duration: 5000,
+            });
+            return false;
+        }
+    }
+    return true;
+  };
+
+  const handleReserve = async () => {
+    if (!user || !userProfile) {
+        setAuthModalOpen(true);
+        return;
+    }
+    
+    if (!vehicle || !date?.from || !date?.to) return;
+    setIsSubmitting(true);
+
+    const pickupDateStr = format(date.from, 'yyyy-MM-dd');
+    const dropoffDateStr = format(date.to, 'yyyy-MM-dd');
+
+    const isAvailable = await checkVehicleAvailability(vehicle.id, pickupDateStr, dropoffDateStr);
+    if (!isAvailable) {
+        setIsSubmitting(false);
+        return;
+    }
+    
+    const selectedInsurance = insuranceOptions.find(opt => opt.id === selectedInsuranceId) || insuranceOptions[0];
+    const rentalDays = differenceInCalendarDays(date.to, date.from) || 1;
+    const vehicleTotal = rentalDays * vehicle.pricePerDay;
+    const insuranceTotal = rentalDays * selectedInsurance.pricePerDay;
+    const totalCost = vehicleTotal + insuranceTotal;
+
+    const reservationData = {
+        customerId: user.uid,
+        customerName: userProfile.name,
+        vehicleId: vehicle.id,
+        vehicle: `${vehicle.make} ${vehicle.model}`,
+        pickupDate: pickupDateStr,
+        dropoffDate: dropoffDateStr,
+        status: 'Upcoming' as const,
+        agent: 'Online Booking',
+        insurance: selectedInsurance,
+        totalCost: totalCost,
+    };
+    
+    try {
+        const response = await fetch('/api/reservations', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(reservationData)
+        });
+
+        if (!response.ok) {
+            const errorResult = await response.json();
+            throw new Error(errorResult.error || 'Failed to create reservation');
+        }
+
+        toast({
+            title: t.bookingSuccessTitle,
+            description: t.bookingSuccessDescription,
+        });
+        router.push('/client-dashboard');
+
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: t.bookingErrorTitle,
+            description: error.message || t.bookingErrorDescription,
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  if (loading || authLoading) {
      return (
         <div className="flex h-screen w-full items-center justify-center">
              <div className="flex flex-col items-center gap-2">
@@ -163,55 +261,14 @@ export default function VehicleDetailPage() {
   }
   
   const selectedInsurance = insuranceOptions.find(opt => opt.id === selectedInsuranceId) || insuranceOptions[0];
-  const rentalDays = date?.from && date?.to ? Math.ceil((date.to.getTime() - date.from.getTime()) / (1000 * 3600 * 24)) : 0;
+  const rentalDays = date?.from && date?.to ? (differenceInCalendarDays(date.to, date.from) || 1) : 0;
   const vehicleTotal = rentalDays * vehicle.pricePerDay;
   const insuranceTotal = rentalDays * selectedInsurance.pricePerDay;
   const totalCost = vehicleTotal + insuranceTotal;
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setCustomerInfo(prev => ({ ...prev, [id]: value }));
-  }
   
   const toggleLang = () => {
     setLang(prev => prev === 'es' ? 'en' : 'es');
   }
-
-  const handleReserve = () => {
-    const newReservationId = `RES-${String(Math.floor(Math.random() * 900) + 100)}`;
-    
-    if (!vehicle) return;
-
-    const newReservation = {
-        id: newReservationId,
-        customer: customerInfo.name,
-        email: customerInfo.email,
-        phone: customerInfo.phone,
-        vehicleId: vehicle.id,
-        vehicle: `${vehicle.make} ${vehicle.model}`,
-        pickupDate: date?.from ? format(date.from, 'yyyy-MM-dd') : '',
-        dropoffDate: date?.to ? format(date.to, 'yyyy-MM-dd') : '',
-        status: 'Pending Signature',
-        agent: 'Online Booking',
-        insurance: selectedInsurance,
-        totalCost: totalCost,
-    };
-    
-    toast({
-        title: t.toastTitle,
-        description: t.toastDescription,
-    });
-
-    const queryParams = new URLSearchParams({
-      reservationId: newReservation.id,
-      customerName: newReservation.customer,
-    });
-    localStorage.setItem('pendingReservation', JSON.stringify(newReservation));
-    
-    router.push(`/contrato?${queryParams.toString()}`);
-  }
-  
-  const isFormValid = customerInfo.name && customerInfo.email && customerInfo.phone && date?.from && date?.to;
 
   return (
     <div className="bg-background text-foreground min-h-screen flex flex-col font-sans">
@@ -221,15 +278,21 @@ export default function VehicleDetailPage() {
             <Logo />
           </Link>
           <nav className="ml-auto flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" asChild>
-              <Link href="/login">
-                {t.adminLogin}
-              </Link>
-            </Button>
+             {user && userProfile ? (
+                 <Button asChild variant="secondary">
+                     <Link href={userProfile.role === 'Client' ? "/client-dashboard" : "/dashboard"}>
+                        <User className="mr-2"/> Mi Cuenta
+                     </Link>
+                 </Button>
+             ) : (
+                <Button variant="ghost" onClick={() => setAuthModalOpen(true)}>
+                    Iniciar Sesión
+                </Button>
+             )}
             <Button asChild>
               <Link href="/#fleet-section">
                 <Car className="mr-2 h-4 w-4" />
-                {t.bookNow}
+                Ver Flota
               </Link>
             </Button>
              <Button variant="outline" size="icon" onClick={toggleLang} aria-label="Change language">
@@ -291,27 +354,8 @@ export default function VehicleDetailPage() {
                 <Card className="mt-8 bg-card border">
                     <CardHeader>
                         <CardTitle>{t.bookYourRental}</CardTitle>
-                        <CardDescription>{t.bookDescription}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        
-                        <div className='space-y-4'>
-                            <div>
-                                <Label htmlFor="name">{t.fullName}</Label>
-                                <Input id="name" placeholder="John Doe" value={customerInfo.name} onChange={handleInputChange} required />
-                            </div>
-                            <div>
-                                <Label htmlFor="email">{t.email}</Label>
-                                <Input id="email" type="email" placeholder="tu@ejemplo.com" value={customerInfo.email} onChange={handleInputChange} required />
-                            </div>
-                            <div>
-                                <Label htmlFor="phone">{t.phone}</Label>
-                                <Input id="phone" type="tel" placeholder="+1 (555) 123-4567" value={customerInfo.phone} onChange={handleInputChange} required />
-                            </div>
-                        </div>
-                        
-                        <Separator />
-                        
                         <div className="grid gap-2">
                             <Label className="text-sm font-medium">{t.rentalDates}</Label>
                              <Popover>
@@ -345,6 +389,7 @@ export default function VehicleDetailPage() {
                                     onSelect={setDate}
                                     numberOfMonths={2}
                                     locale={lang === 'es' ? es : undefined}
+                                    disabled={{ before: new Date() }}
                                 />
                                 </PopoverContent>
                             </Popover>
@@ -387,9 +432,9 @@ export default function VehicleDetailPage() {
                             </div>
                         </div>
 
-                        <Button size="lg" className="w-full text-lg h-12" onClick={handleReserve} disabled={!isFormValid || !isClient}>
-                            <FileSignature className="mr-2 h-5 w-5" />
-                            {t.reserveAndSign}
+                        <Button size="lg" className="w-full text-lg h-12" onClick={handleReserve} disabled={!isClient || isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <FileSignature className="mr-2 h-5 w-5" />}
+                            {user ? t.reserveNow : t.loginToBook}
                         </Button>
 
                     </CardContent>
@@ -403,6 +448,27 @@ export default function VehicleDetailPage() {
             © {new Date().getFullYear()} Virtus Car Rental S.R.L. All Rights Reserved.
           </div>
       </footer>
+      
+      <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl">{t.loginToBook}</DialogTitle>
+            <DialogDescription className="text-center">{t.loginToBookDescription}</DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login"><LogIn className="mr-2"/> Iniciar Sesión</TabsTrigger>
+                <TabsTrigger value="register"><UserPlus className="mr-2"/> Registrarse</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login">
+                <LoginForm />
+            </TabsContent>
+            <TabsContent value="register">
+                <RegisterForm />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

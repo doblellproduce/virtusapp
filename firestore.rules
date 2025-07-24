@@ -1,17 +1,56 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Allow public read access for vehicles, but restrict writes to authenticated users
-    match /vehicles/{vehicleId} {
-      allow get, list: if true;
-      allow write: if request.auth != null;
+    
+    // Helper function to check if the user is an admin or supervisor
+    function isAdminOrSupervisor() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
+    }
+
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
     }
     
-    // Default rule: secure all other collections by requiring authentication
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // USERS:
+    // Admins can manage all user profiles.
+    // Users can only read and update their own profile.
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId || isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // VEHICLES, EXPENSES, REVIEWS, LOGS:
+    // Only Admins or Supervisors can manage these collections.
+    match /{collection}/{docId} where collection in ['vehicles', 'expenses', 'maintenanceLogs', 'reviews', 'activityLogs'] {
+      allow read, write: if request.auth != null && isAdminOrSupervisor();
+    }
+    
+    // CUSTOMERS:
+    // Admins/Supervisors can manage all customers.
+    // Authenticated users can create a customer profile for themselves.
+    match /customers/{customerId} {
+      allow read, write: if request.auth != null && isAdminOrSupervisor();
+      allow create: if request.auth != null;
+    }
+
+    // RESERVATIONS & CONTRACTS:
+    // Admins/Supervisors can manage all.
+    // Authenticated users can create their own reservations/contracts.
+    // Authenticated users can read/update their own reservations.
+    match /{collection}/{docId} where collection in ['reservations', 'contracts'] {
+      allow read, update: if request.auth != null && (get(/databases/$(database)/documents/$(collection)/$(docId)).data.customerId == request.auth.uid || isAdminOrSupervisor());
+      allow create: if request.auth != null;
+      allow delete, list: if request.auth != null && isAdminOrSupervisor();
+    }
+    
+     // Let anyone read vehicle data for the public listing
+    match /vehicles/{vehicleId} {
+      allow get, list: if true;
+      allow write: if request.auth != null && isAdminOrSupervisor();
     }
   }
 }
