@@ -372,11 +372,15 @@ export default function ReservationsClient() {
             return reservations;
         }
         const lowercasedTerm = searchTerm.toLowerCase();
+        // This is the robust filtering logic.
         return reservations.filter(res => {
+            // 1. Ensure the reservation object itself is not null/undefined.
             if (!res) {
                 return false;
             }
+            // 2. Check customer name: must exist and be a string.
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
+            // 3. Check reservation ID: must exist and be a string.
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
             
             return customerNameMatch || idMatch;
@@ -593,4 +597,3 @@ export default function ReservationsClient() {
         </div>
     );
 }
-
