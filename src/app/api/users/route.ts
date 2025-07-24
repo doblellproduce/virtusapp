@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDB } from '@/lib/firebase/admin';
+import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
 import type { UserRole } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -89,5 +89,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage, details: error.message }, { status: statusCode });
   }
 }
-
-    

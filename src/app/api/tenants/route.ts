@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDB } from '@/lib/firebase/admin';
+import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
 import { UserRole } from '@/lib/types';
 import { format } from 'date-fns';
 

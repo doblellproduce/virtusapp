@@ -3,7 +3,7 @@
 
 import { headers } from 'next/headers';
 import { subMonths, format, startOfMonth, getMonth, getYear } from 'date-fns';
-import { adminAuth, adminDB } from '@/lib/firebase/admin';
+import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
 import type { Reservation, Vehicle, Invoice, UserProfile } from '@/lib/types';
 
 
@@ -76,10 +76,10 @@ export async function getDashboardData() {
         const monthDate = subMonths(now, i);
         const monthKey = format(monthDate, 'yyyy-MM');
         const monthLabel = format(monthDate, 'MMM');
-        monthlyRevenue[monthKey] = 0;
         if(!monthLabels.includes(monthLabel)) {
            monthLabels.push(monthLabel);
         }
+        monthlyRevenue[monthKey] = 0;
     }
     
     // Invoices are already sorted by date desc, so we can iterate to find relevant ones

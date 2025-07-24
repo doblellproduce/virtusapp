@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth } from '@/lib/firebase/server/admin';
 
 const publicPaths = ['/login', '/contrato'];
 const publicApiPaths = ['/api/auth']; // API for login/logout is public
@@ -10,7 +10,14 @@ const publicApiPaths = ['/api/auth']; // API for login/logout is public
 async function getUserRoleFromToken(token: string): Promise<string | null> {
     try {
         const decodedToken = await adminAuth.verifyIdToken(token);
-        return decodedToken.role || null;
+        // The role might be on the custom claims. If not, you might need to fetch from Firestore.
+        // For this app, the role is on the user profile, not the token claims by default.
+        // This function is simplified. A real app might fetch the user doc here.
+        const userDoc = await (await import('@/lib/firebase/server/admin')).adminDB.collection('users').doc(decodedToken.uid).get();
+        if (userDoc.exists) {
+            return userDoc.data()?.role || null;
+        }
+        return null;
     } catch (error) {
         // This can happen if the token is expired or invalid
         console.error("Token verification failed in middleware:", error);
@@ -52,7 +59,15 @@ export async function middleware(request: NextRequest) {
       }
   }
 
-  return NextResponse.next();
+  // If the user has a token, forward it in the headers for Server Actions/Components
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('Authorization', `Bearer ${token}`);
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 // Matcher to apply the middleware to all paths except for Next.js internal assets
