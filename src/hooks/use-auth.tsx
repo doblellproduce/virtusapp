@@ -41,43 +41,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
-      setUser(authUser);
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      setLoading(true);
       if (authUser) {
+        setUser(authUser);
         const userDocRef = doc(db, 'users', authUser.uid);
-        
-        const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-                setUserProfile(profileData);
-                // Fallback for users that might not have a role assigned
-                setRole(profileData.role || 'Client');
-            } else {
-                // This could happen if a user is created in Auth but not in Firestore,
-                // or if the user is a client-side registration.
-                // We'll assume a 'Client' role if no profile exists.
-                setUserProfile({id: authUser.uid, name: authUser.displayName || 'Client', email: authUser.email || '', role: 'Client'});
-                setRole('Client');
-            }
-            setLoading(false);
-        }, (error) => {
-            console.error("Error in user profile snapshot listener:", error);
-            setUserProfile(null);
-            setRole(null);
-            setLoading(false);
-        });
-        
-        return () => unsubscribeProfile();
-
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
+          setUserProfile(profileData);
+          setRole(profileData.role || 'Client');
+        } else {
+          setUserProfile({id: authUser.uid, name: authUser.displayName || 'Client', email: authUser.email || '', role: 'Client'});
+          setRole('Client');
+        }
       } else {
         setUser(null);
         setUserProfile(null);
         setRole(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
 
-    return () => unsubscribeAuth();
+    return () => unsubscribe();
   }, []);
 
   const postAuthAction = async (userCredential: any) => {
@@ -89,13 +75,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     if (!response.ok) {
-        const errorText = await response.text();
-        try {
-            const result = JSON.parse(errorText);
-            throw new Error(result.error || "Server-side session creation failed.");
-        } catch (e) {
-            throw new Error(errorText || "An unknown error occurred on the server.");
-        }
+        const errorData = await response.json().catch(() => ({ error: 'Server-side session creation failed.' }));
+        throw new Error(errorData.error);
     }
   }
 
@@ -107,11 +88,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const handleRegister = async (name: string, email: string, pass: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     
-    // Create user profile in Firestore with a default role
     await setDoc(doc(db, "users", userCredential.user.uid), {
       name: name,
       email: email,
-      role: 'Client', // Default role for new sign-ups
+      role: 'Client', 
       photoURL: "",
     });
     
@@ -125,9 +105,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     await signOut(auth);
     await fetch('/api/auth', { method: 'DELETE' });
-    setUser(null);
-    setUserProfile(null);
-    setRole(null);
   };
 
   const handlePasswordReset = (email: string) => {
