@@ -57,6 +57,9 @@ export default function RegisterForm() {
              case 'auth/weak-password':
                 errorMessage = 'The password is too weak. Please use at least 6 characters.';
                 break;
+            case 'auth/invalid-email':
+                errorMessage = 'The email address is not valid.';
+                break;
              default:
                 errorMessage = error.message || "An unexpected error occurred during registration.";
                 break;
@@ -126,4 +129,3 @@ export default function RegisterForm() {
     </div>
   );
 }
-

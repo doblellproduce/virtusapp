@@ -26,6 +26,7 @@ interface AuthContextType {
   storage: FirebaseStorage;
   auth: Auth;
   login: (email: string, pass: string) => Promise<void>;
+  register: (name: string, email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logActivity: (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => Promise<void>;
@@ -51,8 +52,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUserProfile(profileData);
                 setRole(profileData.role);
             } else {
-                setUserProfile(null);
-                setRole(null);
+                // This could happen if a user is created in Auth but not in Firestore,
+                // or if the user is a client-side registration.
+                // We'll assume a 'Client' role if no profile exists.
+                setUserProfile({id: authUser.uid, name: authUser.displayName || 'Client', email: authUser.email || '', role: 'Client'});
+                setRole('Client');
             }
             setLoading(false);
         }, (error) => {
@@ -89,8 +93,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const result = JSON.parse(errorText);
             throw new Error(result.error || "Server-side session creation failed.");
         } catch (e) {
-            // If parsing fails, the response was not JSON. Use the raw text.
-            // This prevents the "Unexpected end of JSON input" error.
             throw new Error(errorText || "An unknown error occurred on the server.");
         }
     }
@@ -98,6 +100,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleLogin = async (email: string, pass: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    await postAuthAction(userCredential);
+  };
+  
+  const handleRegister = async (name: string, email: string, pass: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    
+    // Create user profile in Firestore
+    await setDoc(doc(db, "users", userCredential.user.uid), {
+      name: name,
+      email: email,
+      role: 'Client', // Default role for new sign-ups
+      photoURL: "",
+    });
+    
+    await logActivity('Create', 'User', userCredential.user.uid, `New client registration: ${name}`);
     await postAuthAction(userCredential);
   };
 
@@ -138,6 +155,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     userProfile,
     role,
     login: handleLogin,
+    register: handleRegister,
     logout: handleLogout,
     sendPasswordReset: handlePasswordReset,
     logActivity,
