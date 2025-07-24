@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useContext, createContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, createContext, useCallback, Suspense } from 'react';
 import {
     onAuthStateChanged,
     sendPasswordResetEmail,
