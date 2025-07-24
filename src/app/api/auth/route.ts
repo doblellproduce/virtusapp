@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     
     // Check if the log is for a login or a new registration to avoid double logging
     const isNewUser = decodedToken.auth_time === decodedToken.iat;
-    if (!isNewUser) {
+    if (!isNewUser && userProfile) { // Only log if it's an existing user with a profile
         await adminDB.collection('activityLogs').add({
             timestamp: new Date().toISOString(),
             user: userNameForLog,
