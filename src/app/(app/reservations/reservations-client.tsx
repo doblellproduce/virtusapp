@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -240,7 +239,7 @@ export default function ReservationsClient() {
         }
     }, [open]);
     
-    const handleCancelReservation = async (reservation: Reservation) => {
+    const handleCancelReservation = async (reservation: Reservation | null) => {
         if (!db || !reservation?.id) return;
         const resRef = doc(db, 'reservations', reservation.id);
         await updateDoc(resRef, { status: 'Cancelled' });
@@ -257,7 +256,7 @@ export default function ReservationsClient() {
         });
     };
     
-    const handleGenerateInvoice = async (reservation: Reservation) => {
+    const handleGenerateInvoice = async (reservation: Reservation | null) => {
         if (!db || !reservation?.id) return;
         const agentName = user?.displayName ?? 'System';
         
@@ -271,7 +270,7 @@ export default function ReservationsClient() {
             status: 'Draft' as const,
             createdBy: agentName,
             paymentMethod: 'N/A' as const,
-            reservationId: reservation.id, // <-- Added reference ID
+            reservationId: reservation.id,
         };
 
         await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice);
@@ -283,7 +282,8 @@ export default function ReservationsClient() {
         });
     };
     
-    const handleStartInspection = (reservation: Reservation, type: 'departure' | 'return') => {
+    const handleStartInspection = (reservation: Reservation | null, type: 'departure' | 'return') => {
+        if (!reservation) return;
         setInspectionType(type);
         setInspectingReservation(reservation);
         setIsInspectionModalOpen(true);
@@ -373,14 +373,11 @@ export default function ReservationsClient() {
         }
         const lowercasedTerm = searchTerm.toLowerCase();
         return reservations.filter(res => {
-            // Defensive check: ensure 'res' object and its properties are valid before proceeding.
-            if (!res) return false;
-            const customerName = res.customerName;
-            const id = res.id;
-            
-            const customerNameMatch = typeof customerName === 'string' && customerName.toLowerCase().includes(lowercasedTerm);
-            const idMatch = typeof id === 'string' && id.toLowerCase().includes(lowercasedTerm);
-                
+            if (!res) {
+                return false;
+            }
+            const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
+            const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
             return customerNameMatch || idMatch;
         });
     }, [reservations, searchTerm]);
@@ -451,20 +448,20 @@ export default function ReservationsClient() {
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 
                                                 {res?.status === 'Upcoming' && (
-                                                    <DropdownMenuItem onClick={() => res && handleStartInspection(res, 'departure')} disabled={!res || !!res.departureInspection}>
+                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, 'departure')} disabled={!res || !!res.departureInspection}>
                                                         <FileCheck className="mr-2 h-4 w-4" />
                                                         {res.departureInspection ? 'Departure Done' : 'Start Departure'}
                                                     </DropdownMenuItem>
                                                 )}
                                                 {res?.status === 'Active' && (
-                                                     <DropdownMenuItem onClick={() => res && handleStartInspection(res, 'return')} disabled={!res || !!res.returnInspection}>
+                                                     <DropdownMenuItem onClick={() => handleStartInspection(res, 'return')} disabled={!res || !!res.returnInspection}>
                                                         <Undo2 className="mr-2 h-4 w-4" />
                                                          {res.returnInspection ? 'Return Done' : 'Start Return'}
                                                     </DropdownMenuItem>
                                                 )}
 
                                                  {(res?.departureInspection || res?.returnInspection) && (
-                                                    <DropdownMenuItem onClick={() => res && handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
+                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         View Inspections
                                                     </DropdownMenuItem>
@@ -472,7 +469,7 @@ export default function ReservationsClient() {
                                                 
                                                 <DropdownMenuSeparator />
 
-                                                <DropdownMenuItem onClick={() => res && handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled' || res.status === 'Pending Signature'}>
+                                                <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled' || res.status === 'Pending Signature'}>
                                                     <FileText className="mr-2 h-4 w-4" />
                                                     Generate Invoice
                                                 </DropdownMenuItem>
@@ -500,7 +497,7 @@ export default function ReservationsClient() {
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Back</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => res && handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
+                                                            <AlertDialogAction onClick={() => handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
                                                                 Yes, Cancel Reservation
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
@@ -595,5 +592,7 @@ export default function ReservationsClient() {
         </div>
     );
 }
+
+    
 
     

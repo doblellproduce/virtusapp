@@ -45,9 +45,13 @@ export default function VehiclesPage() {
 
     React.useEffect(() => {
         if (!db) return;
+        setLoading(true);
         const unsubscribe = onSnapshot(collection(db, 'vehicles'), (snapshot) => {
             const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching vehicles:", error);
             setLoading(false);
         });
 
@@ -272,7 +276,7 @@ export default function VehiclesPage() {
                 <DialogContent className="sm:max-w-4xl">
                     <DialogHeader>
                         <DialogTitle>{isEditing ? 'Edit Vehicle' : 'Add New Vehicle'}</DialogTitle>
-                        <DialogDescription>{isEditing ? 'Update the details below.' : 'Fill in the details below to add a new vehicle.'}</DialogDescription>
+                        <DialogDescription>{isEditing ? 'Update the details below.' : 'Fill in the details below to add a new vehicle to the fleet.'}</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto p-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -349,3 +353,5 @@ export default function VehiclesPage() {
         </div>
     );
 }
+
+    
