@@ -397,7 +397,9 @@ export default function ReservationsClient() {
         const lowercasedTerm = term.toLowerCase();
         
         return reservations.filter(res => {
+            // Guard clause to ensure 'res' is a valid object before accessing properties
             if (!res) return false;
+            
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
             
@@ -621,5 +623,7 @@ export default function ReservationsClient() {
 
 
 
+
+    
 
     
