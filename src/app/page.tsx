@@ -7,10 +7,10 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Car, Fuel, Gauge, GitBranch, Loader2, LogIn, Users } from 'lucide-react';
+import { Car, Gauge, GitBranch, Loader2, LogIn, Users } from 'lucide-react';
 import type { Vehicle } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 
 const Logo = () => (
     <div className="flex items-center gap-2 text-primary">
@@ -69,22 +69,23 @@ export default function HomePage() {
   React.useEffect(() => {
     if (!db) return;
 
-    const q = query(collection(db, 'vehicles'), where('status', 'in', ['Available', 'Rented']));
-    const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-            const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+    const fetchVehicles = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const q = query(collection(db, 'vehicles'), where('status', 'in', ['Available', 'Rented']));
+            const querySnapshot = await getDocs(q);
+            const vehiclesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
-            setLoading(false);
-            setError(null);
-        }, 
-        (err) => {
+        } catch (err) {
             console.error("Firestore Error:", err);
             setError("No se pudo cargar la flota. Es posible que no tengamos permisos para acceder a los datos.");
+        } finally {
             setLoading(false);
         }
-    );
-
-    return () => unsubscribe();
+    };
+    
+    fetchVehicles();
   }, [db]);
 
 
