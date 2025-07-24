@@ -26,7 +26,6 @@ interface AuthContextType {
   storage: FirebaseStorage;
   auth: Auth;
   login: (email: string, pass: string) => Promise<void>;
-  register: (name: string, email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logActivity: (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => Promise<void>;
@@ -52,7 +51,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUserProfile(profileData);
                 setRole(profileData.role);
             } else {
-                // This handles the case where the user exists in Auth but not in Firestore yet.
                 setUserProfile(null);
                 setRole(null);
             }
@@ -96,31 +94,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await postAuthAction(userCredential);
   };
 
-  const handleRegister = async (name: string, email: string, pass: string) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    
-    // Create the user profile in Firestore AFTER the user is created in Auth.
-    const newUserProfile: Omit<UserProfile, 'id'> = {
-        name,
-        email,
-        role: 'Client', // All self-registrations are clients
-        photoURL: '',
-    };
-    await setDoc(doc(db, "users", userCredential.user.uid), newUserProfile);
-    
-    // Now that the Firestore doc is created, set the custom claim.
-    await postAuthAction(userCredential);
-  };
-
   const handleLogout = async () => {
-    // Log out before clearing local state
     if (user && userProfile) {
         await logActivity('Logout', 'Auth', user.uid, `User ${userProfile.name} logged out.`);
     }
     await signOut(auth);
-    // Clear the session cookie on the server
     await fetch('/api/auth', { method: 'DELETE' });
-    // Clear local state
     setUser(null);
     setUserProfile(null);
     setRole(null);
@@ -152,7 +131,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     userProfile,
     role,
     login: handleLogin,
-    register: handleRegister,
     logout: handleLogout,
     sendPasswordReset: handlePasswordReset,
     logActivity,

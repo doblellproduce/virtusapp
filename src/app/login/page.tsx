@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -8,8 +7,6 @@ import { useAuth } from '@/hooks/use-auth';
 import React, { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import LoginForm from '@/components/login-form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import RegisterForm from '@/components/register-form';
 
 const Logo = () => (
     <div className="flex flex-col items-center justify-center p-2 text-center">
@@ -24,11 +21,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-        if (role === 'Client') {
-            router.replace('/client-dashboard');
-        } else {
-            router.replace('/dashboard');
-        }
+        // Si hay un usuario, sin importar el rol, lo llevamos al dashboard.
+        // La lógica del middleware ya previene que roles no autorizados entren.
+        router.replace('/dashboard');
     }
   }, [user, loading, role, router]);
 
@@ -41,6 +36,7 @@ export default function LoginPage() {
     );
   }
   
+  // Si no hay usuario, siempre mostramos el formulario de login.
   if (!user) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
@@ -50,30 +46,13 @@ export default function LoginPage() {
               <Logo />
             </CardHeader>
             <CardContent className="space-y-4">
-              <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-                    <TabsTrigger value="register">Registrarse</TabsTrigger>
-                </TabsList>
-                <TabsContent value="login">
-                    <CardHeader className="p-2 pb-4">
-                        <CardTitle className="text-2xl font-bold tracking-tight text-center">Bienvenido de Nuevo</CardTitle>
-                        <CardDescription className="text-center">
-                            Inicia sesión para acceder a tu cuenta.
-                        </CardDescription>
-                    </CardHeader>
-                    <LoginForm />
-                </TabsContent>
-                <TabsContent value="register">
-                    <CardHeader className="p-2 pb-4">
-                        <CardTitle className="text-2xl font-bold tracking-tight text-center">Crear una Cuenta</CardTitle>
-                        <CardDescription className="text-center">
-                            Regístrate para reservar y gestionar tus alquileres.
-                        </CardDescription>
-                    </CardHeader>
-                    <RegisterForm />
-                </TabsContent>
-              </Tabs>
+                 <CardHeader className="p-2 pb-4">
+                    <CardTitle className="text-2xl font-bold tracking-tight text-center">Acceso de Personal</CardTitle>
+                    <CardDescription className="text-center">
+                        Inicia sesión para administrar el sistema.
+                    </CardDescription>
+                </CardHeader>
+                <LoginForm />
             </CardContent>
           </Card>
         </div>
@@ -81,6 +60,7 @@ export default function LoginPage() {
     );
   }
 
+  // Fallback mientras se redirige.
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

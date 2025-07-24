@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, ShieldCheck, Users, Gauge, GitBranch, User, Car, FileSignature, Globe, Loader2, LogIn, UserPlus } from 'lucide-react';
+import { Calendar as CalendarIcon, ShieldCheck, Users, Gauge, GitBranch, User, Car, FileSignature, Globe, Loader2, LogIn, UserPlus, Phone } from 'lucide-react';
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { addDays, format, differenceInCalendarDays } from "date-fns"
@@ -18,17 +18,12 @@ import type { DateRange } from "react-day-picker"
 import { insuranceOptions } from '@/lib/data';
 import type { Vehicle } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
-import LoginForm from '@/components/login-form';
-import RegisterForm from '@/components/register-form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 
 const Carousel = dynamic(() => import('@/components/ui/carousel').then(m => m.Carousel), { ssr: false, loading: () => <div className="aspect-video w-full flex items-center justify-center bg-muted rounded-lg"><Loader2 className="h-8 w-8 animate-spin"/></div> });
 const CarouselContent = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselContent), { ssr: false });
@@ -42,7 +37,7 @@ const translations = {
     seats: "Asientos",
     transmission: "Transmisión",
     engine: "Motor",
-    bookYourRental: "Reserva tu Alquiler",
+    bookYourRental: "Calcula tu Alquiler",
     rentalDates: "Fechas de Alquiler",
     loadingDates: "Cargando fechas...",
     insuranceOptions: "Opciones de Seguro",
@@ -51,21 +46,14 @@ const translations = {
     vehicleCost: "Costo del vehículo",
     insuranceCost: "Costo del seguro",
     estimatedTotal: "Total Estimado",
-    reserveNow: "Reservar Ahora",
-    loginToBook: "Iniciar Sesión para Reservar",
-    loginToBookDescription: "Por favor, inicia sesión o crea una cuenta para completar tu reserva.",
+    contactToBook: "Contactar para Reservar",
     loadingVehicle: "Cargando detalles del vehículo...",
-    bookingSuccessTitle: "¡Reserva Creada!",
-    bookingSuccessDescription: "Tu reserva ha sido creada exitosamente. Puedes ver los detalles en tu panel.",
-    bookingErrorTitle: "Error en la Reserva",
-    bookingErrorDescription: "No se pudo crear la reserva. Por favor, intenta de nuevo.",
-    vehicleNotAvailable: "Este vehículo no está disponible para las fechas seleccionadas.",
   },
   en: {
     seats: "Seats",
     transmission: "Transmission",
     engine: "Engine",
-    bookYourRental: "Book Your Rental",
+    bookYourRental: "Calculate Your Rental",
     rentalDates: "Rental Dates",
     loadingDates: "Loading dates...",
     insuranceOptions: "Insurance Options",
@@ -74,15 +62,8 @@ const translations = {
     vehicleCost: "Vehicle cost",
     insuranceCost: "Insurance cost",
     estimatedTotal: "Estimated Total",
-    reserveNow: "Reserve Now",
-    loginToBook: "Login to Book",
-    loginToBookDescription: "Please log in or create an account to complete your reservation.",
+    contactToBook: "Contact to Book",
     loadingVehicle: "Loading vehicle details...",
-    bookingSuccessTitle: "Reservation Created!",
-    bookingSuccessDescription: "Your reservation has been successfully created. You can view the details in your dashboard.",
-    bookingErrorTitle: "Booking Error",
-    bookingErrorDescription: "Could not create reservation. Please try again.",
-    vehicleNotAvailable: "This vehicle is not available for the selected dates.",
   }
 }
 
@@ -97,19 +78,15 @@ const Logo = () => (
 export default function VehicleDetailPage() {
   const params = useParams();
   const vehicleId = params.id as string;
-  const router = useRouter();
-  const { toast } = useToast();
-  const { db, user, userProfile, loading: authLoading } = useAuth();
+  const { db, user } = useAuth();
   
   const [vehicle, setVehicle] = React.useState<Vehicle | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [date, setDate] = React.useState<DateRange | undefined>(undefined);
   const [selectedInsuranceId, setSelectedInsuranceId] = React.useState<string>(insuranceOptions[0].id);
   const [isClient, setIsClient] = React.useState(false);
   const [lang, setLang] = React.useState<'es' | 'en'>('es');
   const t = translations[lang];
-  const [authModalOpen, setAuthModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const fetchVehicle = async () => {
@@ -142,114 +119,8 @@ export default function VehicleDetailPage() {
     setIsClient(true);
   }, []);
 
-  // Close auth modal if user logs in
-  React.useEffect(() => {
-      if (user && authModalOpen) {
-          setAuthModalOpen(false);
-      }
-  }, [user, authModalOpen]);
 
-  const checkVehicleAvailability = async (vehicleId: string, pickup: string, dropoff: string) => {
-    if(!db) return true;
-    
-    let reservationsRef = query(
-        collection(db, "reservations"),
-        where("vehicleId", "==", vehicleId),
-        where("status", "in", ["Upcoming", "Active"])
-    );
-    const querySnapshot = await getDocs(reservationsRef);
-    const conflictingReservations = querySnapshot.docs.map(doc => doc.data());
-
-    for (const res of conflictingReservations) {
-        const existingPickup = new Date(res.pickupDate);
-        const existingDropoff = new Date(res.dropoffDate);
-        const newPickup = new Date(pickup);
-        const newDropoff = new Date(dropoff);
-        
-        if (newPickup < existingDropoff && newDropoff > existingPickup) {
-            toast({
-                variant: 'destructive',
-                title: 'Booking Conflict',
-                description: t.vehicleNotAvailable,
-                duration: 5000,
-            });
-            return false;
-        }
-    }
-    return true;
-  };
-
-  const handleReserve = async () => {
-    if (!user || !userProfile) {
-        setAuthModalOpen(true);
-        return;
-    }
-    
-    if (!vehicle || !date?.from || !date?.to) return;
-    setIsSubmitting(true);
-
-    const pickupDateStr = format(date.from, 'yyyy-MM-dd');
-    const dropoffDateStr = format(date.to, 'yyyy-MM-dd');
-
-    const isAvailable = await checkVehicleAvailability(vehicle.id, pickupDateStr, dropoffDateStr);
-    if (!isAvailable) {
-        setIsSubmitting(false);
-        return;
-    }
-    
-    const selectedInsurance = insuranceOptions.find(opt => opt.id === selectedInsuranceId) || insuranceOptions[0];
-    const rentalDays = differenceInCalendarDays(date.to, date.from) || 1;
-    const vehicleTotal = rentalDays * vehicle.pricePerDay;
-    const insuranceTotal = rentalDays * selectedInsurance.pricePerDay;
-    const totalCost = vehicleTotal + insuranceTotal;
-
-    const reservationData = {
-        customerId: user.uid,
-        customerName: userProfile.name,
-        vehicleId: vehicle.id,
-        vehicle: `${vehicle.make} ${vehicle.model}`,
-        pickupDate: pickupDateStr,
-        dropoffDate: dropoffDateStr,
-        status: 'Upcoming' as const,
-        agent: 'Online Booking',
-        insurance: selectedInsurance,
-        totalCost: totalCost,
-    };
-    
-    try {
-        const idToken = await user.getIdToken();
-        const response = await fetch('/api/reservations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify(reservationData)
-        });
-
-        if (!response.ok) {
-            const errorResult = await response.json();
-            throw new Error(errorResult.error || 'Failed to create reservation');
-        }
-
-        toast({
-            title: t.bookingSuccessTitle,
-            description: t.bookingSuccessDescription,
-        });
-        router.push('/client-dashboard');
-
-    } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: t.bookingErrorTitle,
-            description: error.message || t.bookingErrorDescription,
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
-  }
-
-  if (loading || authLoading) {
+  if (loading) {
      return (
         <div className="flex h-screen w-full items-center justify-center">
              <div className="flex flex-col items-center gap-2">
@@ -282,15 +153,15 @@ export default function VehicleDetailPage() {
             <Logo />
           </Link>
           <nav className="ml-auto flex items-center gap-2 sm:gap-4">
-             {user && userProfile ? (
+             {user ? (
                  <Button asChild variant="secondary">
-                     <Link href={userProfile.role === 'Client' ? "/client-dashboard" : "/dashboard"}>
-                        <User className="mr-2"/> Mi Cuenta
+                     <Link href="/dashboard">
+                        <User className="mr-2"/> Panel Admin
                      </Link>
                  </Button>
              ) : (
-                <Button variant="ghost" onClick={() => setAuthModalOpen(true)}>
-                    Iniciar Sesión
+                <Button variant="ghost" asChild>
+                    <Link href="/login">Acceso Admin</Link>
                 </Button>
              )}
             <Button asChild>
@@ -436,9 +307,11 @@ export default function VehicleDetailPage() {
                             </div>
                         </div>
 
-                        <Button size="lg" className="w-full text-lg h-12" onClick={handleReserve} disabled={!isClient || isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <FileSignature className="mr-2 h-5 w-5" />}
-                            {user ? t.reserveNow : t.loginToBook}
+                        <Button size="lg" className="w-full text-lg h-12" asChild>
+                            <Link href="/#contact-section">
+                                <Phone className="mr-2 h-5 w-5" />
+                                {t.contactToBook}
+                            </Link>
                         </Button>
 
                     </CardContent>
@@ -447,32 +320,12 @@ export default function VehicleDetailPage() {
         </div>
       </main>
       
-      <footer className="border-t bg-muted/50 mt-12">
+      <footer id="contact-section" className="border-t bg-muted/50 mt-12">
           <div className="container mx-auto py-6 text-center text-muted-foreground text-sm">
             © {new Date().getFullYear()} Virtus Car Rental S.R.L. All Rights Reserved.
           </div>
       </footer>
       
-      <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-center text-2xl">{t.loginToBook}</DialogTitle>
-            <DialogDescription className="text-center">{t.loginToBookDescription}</DialogDescription>
-          </DialogHeader>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login"><LogIn className="mr-2"/> Iniciar Sesión</TabsTrigger>
-                <TabsTrigger value="register"><UserPlus className="mr-2"/> Registrarse</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-                <LoginForm />
-            </TabsContent>
-            <TabsContent value="register">
-                <RegisterForm />
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

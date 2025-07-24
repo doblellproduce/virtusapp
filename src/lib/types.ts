@@ -1,6 +1,5 @@
 
-
-export type UserRole = 'Admin' | 'Supervisor' | 'Secretary' | 'Client';
+export type UserRole = 'Admin' | 'Supervisor' | 'Secretary'; // Removed 'Client'
 
 export type UserProfile = {
     id: string; // Corresponds to Firebase Auth UID
@@ -39,7 +38,6 @@ export type Vehicle = {
         engine: string;
     };
     lastServiceDate: string;
-    // Add reviews field
     reviews?: Review[];
     averageRating?: number;
 };
@@ -55,7 +53,7 @@ export type VehicleInspection = {
 
 export type Reservation = {
     id: string;
-    customerId: string;
+    customerId: string; // This would now be a customer document ID, not a user UID.
     customerName: string;
     vehicleId: string;
     vehicle: string;
