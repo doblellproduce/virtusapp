@@ -8,20 +8,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
-import type { Reservation, Vehicle, Customer } from '@/lib/types';
+import type { Reservation, Vehicle, Customer, VehicleInspection } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { onSnapshot, collection, addDoc, doc, updateDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { CustomerCombobox } from '@/components/customer-combobox';
+import DepartureInspectionModal from '@/components/departure-inspection-modal';
 
-type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle'>;
+type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection'>;
 
 const emptyReservation: NewReservation = {
     customerId: '',
@@ -33,7 +35,7 @@ const emptyReservation: NewReservation = {
 };
 
 export default function ReservationsClient() {
-    const { user, db, logActivity } = useAuth();
+    const { user, db, storage, logActivity } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -45,6 +47,10 @@ export default function ReservationsClient() {
     const [reservationData, setReservationData] = React.useState<NewReservation>(emptyReservation);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [highlightedRes, setHighlightedRes] = React.useState<string | null>(null);
+    
+    const [isInspectionModalOpen, setIsInspectionModalOpen] = React.useState(false);
+    const [inspectingReservation, setInspectingReservation] = React.useState<Reservation | null>(null);
+    const [inspectionType, setInspectionType] = React.useState<'departure' | 'return'>('departure');
 
     React.useEffect(() => {
         if (!db) return;
@@ -121,8 +127,13 @@ export default function ReservationsClient() {
 
     const generateNewReservationId = () => {
         const maxId = reservations.reduce((max, res) => {
-            const idNum = parseInt(res.id.split('-')[1]);
-            return idNum > max ? idNum : max;
+            if (res && res.id && typeof res.id === 'string') {
+                const idNum = parseInt(res.id.split('-')[1]);
+                if (!isNaN(idNum) && idNum > max) {
+                    return idNum;
+                }
+            }
+            return max;
         }, 0);
         return `RES-${String(maxId + 1).padStart(3, '0')}`;
     };
@@ -146,7 +157,6 @@ export default function ReservationsClient() {
             const newPickup = new Date(pickup);
             const newDropoff = new Date(dropoff);
             
-            // Check for overlap
             if (newPickup < existingDropoff && newDropoff > existingPickup) {
                 toast({
                     variant: 'destructive',
@@ -167,7 +177,7 @@ export default function ReservationsClient() {
 
         const isAvailable = await checkVehicleAvailability(reservationData.vehicleId, reservationData.pickupDate, reservationData.dropoffDate, isEditing ? editingReservation?.id : undefined);
         if (!isAvailable) {
-            return; // Stop submission if there's a conflict
+            return;
         }
 
         const agentName = user?.displayName ?? 'System';
@@ -272,6 +282,74 @@ export default function ReservationsClient() {
             description: `Invoice ${newInvoiceId} for ${reservation.id} created with amount $${newInvoice.amount}.`,
         });
     };
+    
+    const handleStartInspection = (reservation: Reservation, type: 'departure' | 'return') => {
+        setInspectionType(type);
+        setInspectingReservation(reservation);
+        setIsInspectionModalOpen(true);
+    };
+
+    const handleInspectionSubmit = async (data: {
+        mileage: string;
+        fuelLevel: string;
+        notes: string;
+        photos: File[];
+        signature: File | null;
+    }) => {
+        if (!inspectingReservation || !db || !storage) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No reservation selected or database not available.' });
+            return;
+        }
+
+        try {
+            const uploadPhoto = async (file: File, folder: string) => {
+                if (!file) return '';
+                const fileRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
+                await uploadBytes(fileRef, file);
+                return getDownloadURL(fileRef);
+            };
+            
+            const photoUrls = await Promise.all(data.photos.map(p => uploadPhoto(p, `inspections/${inspectingReservation.id}/${inspectionType}`)));
+            const signatureUrl = data.signature ? await uploadPhoto(data.signature, `signatures/${inspectingReservation.id}/${inspectionType}`) : '';
+
+            const inspectionData: VehicleInspection = {
+                photos: photoUrls.filter(url => url),
+                notes: data.notes,
+                fuelLevel: data.fuelLevel as VehicleInspection['fuelLevel'],
+                mileage: Number(data.mileage),
+                signatureUrl,
+                timestamp: new Date().toISOString(),
+            };
+            
+            const resRef = doc(db, 'reservations', inspectingReservation.id);
+            if (inspectionType === 'departure') {
+                await updateDoc(resRef, {
+                    departureInspection: inspectionData,
+                    status: 'Active',
+                });
+                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
+                toast({ title: 'Inspection Complete', description: 'Vehicle departure inspection has been saved.' });
+            } else {
+                 await updateDoc(resRef, {
+                    returnInspection: inspectionData,
+                    status: 'Completed',
+                });
+                const vehicleRef = doc(db, 'vehicles', inspectingReservation.vehicleId);
+                await updateDoc(vehicleRef, { status: 'Available' });
+
+                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed return inspection.');
+                await logActivity('Update', 'Vehicle', inspectingReservation.vehicleId, 'Status set to Available (return inspection).');
+                toast({ title: 'Return Complete', description: 'Vehicle return inspection has been saved.' });
+            }
+            
+            setIsInspectionModalOpen(false);
+            setInspectingReservation(null);
+            
+        } catch (error) {
+            console.error('Inspection submit error:', error);
+            toast({ variant: 'destructive', title: 'Submission Error', description: 'Failed to save inspection data.' });
+        }
+    };
 
 
     const getStatusVariant = (status: string) => {
@@ -289,15 +367,26 @@ export default function ReservationsClient() {
         return '';
     }
     
-    const filteredReservations = reservations.filter(res => {
-        if (!searchTerm) return true;
+    const filteredReservations = React.useMemo(() => {
+        if (!searchTerm) {
+            return reservations;
+        }
         const lowercasedTerm = searchTerm.toLowerCase();
-        // Safe check for both customerName and id before calling toLowerCase
-        const customerNameMatch = res.customerName ? res.customerName.toLowerCase().includes(lowercasedTerm) : false;
-        const idMatch = res.id ? res.id.toLowerCase().includes(lowercasedTerm) : false;
-        return customerNameMatch || idMatch;
-    });
-
+        return reservations.filter(res => {
+            if (!res) return false;
+            
+            const customerNameMatch = res.customerName && typeof res.customerName === 'string' 
+                ? res.customerName.toLowerCase().includes(lowercasedTerm) 
+                : false;
+                
+            const idMatch = res.id && typeof res.id === 'string'
+                ? res.id.toLowerCase().includes(lowercasedTerm)
+                : false;
+                
+            return customerNameMatch || idMatch;
+        });
+    }, [reservations, searchTerm]);
+    
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
@@ -337,19 +426,19 @@ export default function ReservationsClient() {
                         </TableHeader>
                         <TableBody>
                             {filteredReservations.map((res) => (
-                                <TableRow key={res.id} className={highlightedRes === res.id ? 'bg-primary/10 transition-all duration-500' : ''}>
-                                    <TableCell className="font-medium">{res.id}</TableCell>
-                                    <TableCell>{res.customerName}</TableCell>
-                                    <TableCell>{res.vehicle}</TableCell>
-                                    <TableCell>{res.pickupDate}</TableCell>
-                                    <TableCell>{res.dropoffDate}</TableCell>
-                                    <TableCell>${res.totalCost?.toFixed(2) || 'N/A'}</TableCell>
+                                <TableRow key={res?.id || Math.random()} className={highlightedRes === res.id ? 'bg-primary/10 transition-all duration-500' : ''}>
+                                    <TableCell className="font-medium">{res?.id || 'N/A'}</TableCell>
+                                    <TableCell>{res?.customerName || 'N/A'}</TableCell>
+                                    <TableCell>{res?.vehicle || 'N/A'}</TableCell>
+                                    <TableCell>{res?.pickupDate || 'N/A'}</TableCell>
+                                    <TableCell>{res?.dropoffDate || 'N/A'}</TableCell>
+                                    <TableCell>${res?.totalCost?.toFixed(2) || 'N/A'}</TableCell>
                                     <TableCell>
                                         <Badge
-                                            variant={getStatusVariant(res.status)}
-                                            className={getStatusClass(res.status)}
+                                            variant={getStatusVariant(res?.status)}
+                                            className={getStatusClass(res?.status)}
                                         >
-                                            {res.status}
+                                            {res?.status || 'Unknown'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -362,20 +451,43 @@ export default function ReservationsClient() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleOpenDialog(res)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Edit
-                                                </DropdownMenuItem>
+                                                
+                                                {res.status === 'Upcoming' && (
+                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, 'departure')} disabled={!!res.departureInspection}>
+                                                        <FileCheck className="mr-2 h-4 w-4" />
+                                                        {res.departureInspection ? 'Departure Done' : 'Start Departure'}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {res.status === 'Active' && (
+                                                     <DropdownMenuItem onClick={() => handleStartInspection(res, 'return')} disabled={!!res.returnInspection}>
+                                                        <Undo2 className="mr-2 h-4 w-4" />
+                                                         {res.returnInspection ? 'Return Done' : 'Start Return'}
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                 {(res.departureInspection || res.returnInspection) && (
+                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Inspections
+                                                    </DropdownMenuItem>
+                                                )}
+                                                
+                                                <DropdownMenuSeparator />
+
                                                 <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={res.status === 'Cancelled' || res.status === 'Pending Signature'}>
                                                     <FileText className="mr-2 h-4 w-4" />
                                                     Generate Invoice
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleOpenDialog(res)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Edit
                                                 </DropdownMenuItem>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <DropdownMenuItem
                                                             onSelect={(e) => e.preventDefault()}
                                                             className="text-destructive focus:text-destructive"
-                                                            disabled={res.status === 'Cancelled' || res.status === 'Completed'}
+                                                            disabled={res.status === 'Cancelled' || res.status === 'Completed' || res.status === 'Active'}
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             Cancel Reservation
@@ -472,8 +584,26 @@ export default function ReservationsClient() {
                     </form>
                 </DialogContent>
             </Dialog>
+            
+            {isInspectionModalOpen && (
+                <DepartureInspectionModal
+                    isOpen={isInspectionModalOpen}
+                    onClose={() => setIsInspectionModalOpen(false)}
+                    onSubmit={handleInspectionSubmit}
+                    reservation={inspectingReservation}
+                    inspectionType={inspectionType}
+                />
+            )}
         </div>
     );
 }
 
     
+
+    
+
+
+
+
+    
+
