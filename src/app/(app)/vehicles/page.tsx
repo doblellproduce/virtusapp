@@ -341,7 +341,7 @@ export default function VehiclesPage() {
                              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {imagePreviews.map((preview, index) => (
                                     <div key={index} className="relative aspect-video">
-                                        <Image src={preview} alt={`Preview ${index + 1}`} layout="fill" className="rounded-md object-cover" />
+                                        <Image src={preview} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
                                     </div>
                                 ))}
                             </div>
