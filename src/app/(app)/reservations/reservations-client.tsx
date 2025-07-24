@@ -390,15 +390,18 @@ export default function ReservationsClient() {
     }
     
     const filteredReservations = React.useMemo(() => {
+        // Ensure searchTerm is a string, defaulting to an empty string if it's nullish
         const term = searchTerm || '';
         if (!term) {
             return reservations;
         }
         const lowercasedTerm = term.toLowerCase();
+        
         return reservations.filter(res => {
-            if (!res) return false;
-            const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
-            const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
+            // Robust checks to ensure properties exist and are strings before calling .toLowerCase()
+            const customerNameMatch = res && typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
+            const idMatch = res && typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
+            
             return customerNameMatch || idMatch;
         });
     }, [reservations, searchTerm]);
@@ -615,5 +618,6 @@ export default function ReservationsClient() {
 }
     
     
+
 
 
