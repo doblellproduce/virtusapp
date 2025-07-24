@@ -84,8 +84,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "Server-side session creation failed.");
+        const errorText = await response.text();
+        try {
+            const result = JSON.parse(errorText);
+            throw new Error(result.error || "Server-side session creation failed.");
+        } catch (e) {
+            // If parsing fails, the response was not JSON. Use the raw text.
+            // This prevents the "Unexpected end of JSON input" error.
+            throw new Error(errorText || "An unknown error occurred on the server.");
+        }
     }
   }
 
