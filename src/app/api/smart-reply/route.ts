@@ -2,9 +2,9 @@
 import {NextRequest, NextResponse} from 'next/server';
 import { generateSmartReply, type SmartReplyInput } from '@/ai/flows/smart-reply-tool';
 import {googleAI} from '@genkit-ai/googleai';
-import {configureGenkit} from 'genkit';
+import {genkit} from 'genkit';
 
-configureGenkit({
+genkit({
   plugins: [googleAI()],
 });
 
