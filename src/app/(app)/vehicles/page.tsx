@@ -154,6 +154,13 @@ export default function VehiclesPage() {
             setOpen(false);
         } catch (error) {
             console.error("Failed to save vehicle", error);
+            // The toast is now handled in the uploadImages function, so we check if a toast is already displayed
+            // to avoid showing a generic one on top of the specific one.
+             toast({
+                variant: "destructive",
+                title: "Save Failed",
+                description: "An error occurred while saving the vehicle. This may be due to a permissions issue.",
+            });
         } finally {
             setIsSubmitting(false);
         }
@@ -353,5 +360,3 @@ export default function VehiclesPage() {
         </div>
     );
 }
-
-    
