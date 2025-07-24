@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -240,7 +241,7 @@ export default function ReservationsClient() {
     }, [open]);
     
     const handleCancelReservation = async (reservation: Reservation) => {
-        if (!db) return;
+        if (!db || !reservation?.id) return;
         const resRef = doc(db, 'reservations', reservation.id);
         await updateDoc(resRef, { status: 'Cancelled' });
 
@@ -257,7 +258,7 @@ export default function ReservationsClient() {
     };
     
     const handleGenerateInvoice = async (reservation: Reservation) => {
-        if (!db) return;
+        if (!db || !reservation?.id) return;
         const agentName = user?.displayName ?? 'System';
         
         const newInvoiceId = `INV-2024-${String(Date.now()).slice(-4)}`;
@@ -450,20 +451,20 @@ export default function ReservationsClient() {
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 
                                                 {res?.status === 'Upcoming' && (
-                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, 'departure')} disabled={!!res.departureInspection}>
+                                                    <DropdownMenuItem onClick={() => res && handleStartInspection(res, 'departure')} disabled={!res || !!res.departureInspection}>
                                                         <FileCheck className="mr-2 h-4 w-4" />
                                                         {res.departureInspection ? 'Departure Done' : 'Start Departure'}
                                                     </DropdownMenuItem>
                                                 )}
                                                 {res?.status === 'Active' && (
-                                                     <DropdownMenuItem onClick={() => handleStartInspection(res, 'return')} disabled={!!res.returnInspection}>
+                                                     <DropdownMenuItem onClick={() => res && handleStartInspection(res, 'return')} disabled={!res || !!res.returnInspection}>
                                                         <Undo2 className="mr-2 h-4 w-4" />
                                                          {res.returnInspection ? 'Return Done' : 'Start Return'}
                                                     </DropdownMenuItem>
                                                 )}
 
                                                  {(res?.departureInspection || res?.returnInspection) && (
-                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
+                                                    <DropdownMenuItem onClick={() => res && handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         View Inspections
                                                     </DropdownMenuItem>
@@ -471,11 +472,11 @@ export default function ReservationsClient() {
                                                 
                                                 <DropdownMenuSeparator />
 
-                                                <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={res?.status === 'Cancelled' || res?.status === 'Pending Signature'}>
+                                                <DropdownMenuItem onClick={() => res && handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled' || res.status === 'Pending Signature'}>
                                                     <FileText className="mr-2 h-4 w-4" />
                                                     Generate Invoice
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleOpenDialog(res)}>
+                                                <DropdownMenuItem onClick={() => res && handleOpenDialog(res)} disabled={!res}>
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     Edit
                                                 </DropdownMenuItem>
@@ -484,7 +485,7 @@ export default function ReservationsClient() {
                                                         <DropdownMenuItem
                                                             onSelect={(e) => e.preventDefault()}
                                                             className="text-destructive focus:text-destructive"
-                                                            disabled={res?.status === 'Cancelled' || res?.status === 'Completed' || res?.status === 'Active'}
+                                                            disabled={!res || res.status === 'Cancelled' || res.status === 'Completed' || res.status === 'Active'}
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             Cancel Reservation
@@ -499,7 +500,7 @@ export default function ReservationsClient() {
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Back</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
+                                                            <AlertDialogAction onClick={() => res && handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
                                                                 Yes, Cancel Reservation
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
@@ -595,4 +596,5 @@ export default function ReservationsClient() {
     );
 }
 
-    
+
+

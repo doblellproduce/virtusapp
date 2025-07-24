@@ -241,7 +241,7 @@ export default function ReservationsClient() {
     }, [open]);
     
     const handleCancelReservation = async (reservation: Reservation) => {
-        if (!db) return;
+        if (!db || !reservation?.id) return;
         const resRef = doc(db, 'reservations', reservation.id);
         await updateDoc(resRef, { status: 'Cancelled' });
 
@@ -258,7 +258,7 @@ export default function ReservationsClient() {
     };
     
     const handleGenerateInvoice = async (reservation: Reservation) => {
-        if (!db) return;
+        if (!db || !reservation?.id) return;
         const agentName = user?.displayName ?? 'System';
         
         const newInvoiceId = `INV-2024-${String(Date.now()).slice(-4)}`;
@@ -378,10 +378,8 @@ export default function ReservationsClient() {
                 return false;
             }
             
-            // Defensively check 'customerName' property.
+            // Defensively check properties.
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
-            
-            // Defensively check 'id' property.
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
                 
             return customerNameMatch || idMatch;
@@ -427,7 +425,7 @@ export default function ReservationsClient() {
                         </TableHeader>
                         <TableBody>
                             {filteredReservations.map((res) => (
-                                <TableRow key={res?.id || Math.random()} className={highlightedRes === res.id ? 'bg-primary/10 transition-all duration-500' : ''}>
+                                <TableRow key={res?.id || Math.random()} className={highlightedRes === res?.id ? 'bg-primary/10 transition-all duration-500' : ''}>
                                     <TableCell className="font-medium">{res?.id || 'N/A'}</TableCell>
                                     <TableCell>{res?.customerName || 'N/A'}</TableCell>
                                     <TableCell>{res?.vehicle || 'N/A'}</TableCell>
@@ -453,21 +451,21 @@ export default function ReservationsClient() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 
-                                                {res.status === 'Upcoming' && (
-                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, 'departure')} disabled={!!res.departureInspection}>
+                                                {res?.status === 'Upcoming' && (
+                                                    <DropdownMenuItem onClick={() => res && handleStartInspection(res, 'departure')} disabled={!res || !!res.departureInspection}>
                                                         <FileCheck className="mr-2 h-4 w-4" />
                                                         {res.departureInspection ? 'Departure Done' : 'Start Departure'}
                                                     </DropdownMenuItem>
                                                 )}
-                                                {res.status === 'Active' && (
-                                                     <DropdownMenuItem onClick={() => handleStartInspection(res, 'return')} disabled={!!res.returnInspection}>
+                                                {res?.status === 'Active' && (
+                                                     <DropdownMenuItem onClick={() => res && handleStartInspection(res, 'return')} disabled={!res || !!res.returnInspection}>
                                                         <Undo2 className="mr-2 h-4 w-4" />
                                                          {res.returnInspection ? 'Return Done' : 'Start Return'}
                                                     </DropdownMenuItem>
                                                 )}
 
-                                                 {(res.departureInspection || res.returnInspection) && (
-                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
+                                                 {(res?.departureInspection || res?.returnInspection) && (
+                                                    <DropdownMenuItem onClick={() => res && handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         View Inspections
                                                     </DropdownMenuItem>
@@ -475,11 +473,11 @@ export default function ReservationsClient() {
                                                 
                                                 <DropdownMenuSeparator />
 
-                                                <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={res.status === 'Cancelled' || res.status === 'Pending Signature'}>
+                                                <DropdownMenuItem onClick={() => res && handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled' || res.status === 'Pending Signature'}>
                                                     <FileText className="mr-2 h-4 w-4" />
                                                     Generate Invoice
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleOpenDialog(res)}>
+                                                <DropdownMenuItem onClick={() => res && handleOpenDialog(res)} disabled={!res}>
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     Edit
                                                 </DropdownMenuItem>
@@ -488,7 +486,7 @@ export default function ReservationsClient() {
                                                         <DropdownMenuItem
                                                             onSelect={(e) => e.preventDefault()}
                                                             className="text-destructive focus:text-destructive"
-                                                            disabled={res.status === 'Cancelled' || res.status === 'Completed' || res.status === 'Active'}
+                                                            disabled={!res || res.status === 'Cancelled' || res.status === 'Completed' || res.status === 'Active'}
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             Cancel Reservation
@@ -498,12 +496,12 @@ export default function ReservationsClient() {
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This will cancel the reservation for <span className="font-semibold">{res.customerName}</span> ({res.id}). This action cannot be undone.
+                                                                This will cancel the reservation for <span className="font-semibold">{res?.customerName}</span> ({res?.id}). This action cannot be undone.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Back</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
+                                                            <AlertDialogAction onClick={() => res && handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
                                                                 Yes, Cancel Reservation
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
@@ -598,4 +596,5 @@ export default function ReservationsClient() {
         </div>
     );
 }
+
 
