@@ -45,19 +45,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(authUser);
       if (authUser) {
         const userDocRef = doc(db, 'users', authUser.uid);
-        // Use getDoc for initial load for faster perceived performance
-        const initialDoc = await getDoc(userDocRef);
-        if (initialDoc.exists()) {
-            const profileData = { id: initialDoc.id, ...initialDoc.data() } as UserProfile;
-            setUserProfile(profileData);
-            setRole(profileData.role);
-        } else {
-            setUserProfile(null);
-            setRole(null);
-        }
-        setLoading(false);
-
-        // Then, attach the listener for real-time updates
+        
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
@@ -67,11 +55,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUserProfile(null);
                 setRole(null);
             }
+            setLoading(false);
         }, (error) => {
             console.error("Error in user profile snapshot listener:", error);
             setUserProfile(null);
             setRole(null);
+            setLoading(false);
         });
+        
         return () => unsubscribeProfile();
 
       } else {
@@ -138,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
         await addDoc(collection(db, 'activityLogs'), {
             timestamp: new Date().toISOString(),
-            user: userProfile.name,
+            user: userProfile.name || user?.email, // Fallback to email if name is not available
             action,
             entityType,
             entityId,
@@ -147,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
         console.error("Error logging activity:", error);
     }
-  }, [db, userProfile]);
+  }, [db, user, userProfile]);
 
   const value: AuthContextType = {
     loading,

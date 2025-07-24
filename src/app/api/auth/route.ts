@@ -14,28 +14,24 @@ export async function POST(request: NextRequest) {
     const uid = decodedToken.uid;
     
     const userDocSnap = await adminDB.collection('users').doc(uid).get();
-    if (!userDocSnap.exists) {
-        // If user profile doesn't exist yet, it might be a new registration.
-        // It's safer to not log here and let the registration logic handle it.
-        // Or, we could attempt to create a profile, but that logic is better handled
-        // client-side upon registration success. For now, we'll just set claims.
-    }
-    const userProfile = userDocSnap.data();
+    
+    const userProfile = userDocSnap.exists ? userDocSnap.data() : null;
 
     // Set custom claim for role-based access in middleware
     await adminAuth.setCustomUserClaims(uid, { role: userProfile?.role || 'Client' });
     
-    // Log activity only if profile exists to avoid logging for incomplete sign-ups
-    if (userProfile) {
-        await adminDB.collection('activityLogs').add({
-            timestamp: new Date().toISOString(),
-            user: userProfile?.name || userProfile?.email,
-            action: 'Login',
-            entityType: 'Auth',
-            entityId: uid,
-            details: `User ${userProfile?.name} logged in.`
-        });
-    }
+    // Log activity only if profile exists, otherwise use email as a fallback.
+    // This prevents the "User undefined logged in" error.
+    const userNameForLog = userProfile?.name || decodedToken.email || 'Unknown User';
+    
+    await adminDB.collection('activityLogs').add({
+        timestamp: new Date().toISOString(),
+        user: userNameForLog,
+        action: 'Login',
+        entityType: 'Auth',
+        entityId: uid,
+        details: `User ${userNameForLog} logged in.`
+    });
     
     const response = NextResponse.json({ success: true, message: 'Authentication successful.' });
 
