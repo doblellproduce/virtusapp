@@ -28,7 +28,7 @@ if (getApps().length === 0) {
     // For local development or environments where server-side auth isn't needed,
     // you might want to initialize without credentials, though this will limit functionality.
     // Or throw an error to ensure config is always present.
-    console.error("Firebase Admin credentials are not set in environment variables.");
+    console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side auth will be limited.");
     // As a fallback for the app not to crash during build, but it will fail on auth requests
     adminApp = initializeApp();
   }
