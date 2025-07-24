@@ -9,29 +9,27 @@ let adminAuth: Auth;
 let adminDB: Firestore;
 let adminStorage: Storage;
 
-// Correctly format the private key by replacing \\n with \n, and handle if it's undefined.
+// Correctly format the private key by replacing \\n with \n.
 const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-const serviceAccount = {
-  projectId: projectId,
-  clientEmail: clientEmail,
-  privateKey: privateKey,
-};
-
 if (getApps().length === 0) {
+  // Ensure all credentials are present before trying to initialize
   if (privateKey && clientEmail && projectId) {
     adminApp = initializeApp({
-      credential: cert(serviceAccount),
+      // Use the cert() helper to robustly create the credential object
+      credential: cert({
+        projectId: projectId,
+        clientEmail: clientEmail,
+        privateKey: privateKey,
+      }),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
   } else {
-    // For local development or environments where server-side auth isn't needed,
-    // you might want to initialize without credentials, though this will limit functionality.
-    // Or throw an error to ensure config is always present.
-    console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side auth will be limited.");
-    // As a fallback for the app not to crash during build, but it will fail on auth requests
+    // Warn if credentials are not set, which will cause runtime errors for auth-dependent server actions.
+    console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side functionality will be limited.");
+    // Initialize without credentials as a fallback to prevent build crashes, though auth will fail.
     adminApp = initializeApp();
   }
 } else {
