@@ -58,10 +58,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
-        setUser(authUser);
         try {
+            // First, set the user to establish the client-side session
+            setUser(authUser);
+            // Then, attempt to create the server-side session
             await postAuthAction(authUser);
 
+            // If server session is successful, listen for profile changes
             const userDocRef = doc(db, 'users', authUser.uid);
             const unsubscribeSnapshot = onSnapshot(userDocRef, (userDocSnap) => {
                 if (userDocSnap.exists()) {
@@ -69,12 +72,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   setUserProfile(profileData);
                   const newRole = profileData.role || 'Client';
                   setRole(newRole);
-                   if (newRole !== 'Client' && window.location.pathname.startsWith('/login')) {
+                   if (newRole !== 'Client' && (window.location.pathname === '/login' || window.location.pathname === '/')) {
                       router.push('/dashboard');
                   } else if (newRole === 'Client' && !window.location.pathname.startsWith('/client-dashboard')) {
                       router.push('/client-dashboard');
                   }
                 } else {
+                  // This case handles users authenticated with Firebase but without a 'users' doc entry (clients)
                   setUserProfile(null);
                   setRole('Client');
                   if (!window.location.pathname.startsWith('/client-dashboard')) {
@@ -84,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setLoading(false);
             }, (error) => {
                 console.error("Firestore snapshot error:", error);
-                setLoading(false)
+                setLoading(false);
             });
              return () => unsubscribeSnapshot();
         } catch (error) {
@@ -104,6 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleLogin = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
+    // onAuthStateChanged will handle the rest
   };
   
   const handleLogout = async () => {
