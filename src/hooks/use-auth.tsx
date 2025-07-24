@@ -16,6 +16,7 @@ import { auth, db, storage } from '@/lib/firebase/client';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from "firebase/storage";
 import type { Auth } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +40,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
@@ -46,27 +48,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (authUser) {
         setUser(authUser);
         const userDocRef = doc(db, 'users', authUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
-          setUserProfile(profileData);
-          setRole(profileData.role || 'Client');
-        } else {
-          // This case is for employees that exist in Auth but not Firestore for some reason.
-          // It's a fallback. A proper client user would not have a doc here.
-          setUserProfile({id: authUser.uid, name: authUser.displayName || 'Staff', email: authUser.email || '', role: 'Secretary'});
-          setRole('Secretary');
-        }
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (userDocSnap) => {
+            if (userDocSnap.exists()) {
+              const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
+              setUserProfile(profileData);
+              const newRole = profileData.role || 'Client';
+              setRole(newRole);
+               if (newRole !== 'Client') {
+                  router.push('/dashboard');
+              } else {
+                  router.push('/client-dashboard');
+              }
+            } else {
+              // This is a fallback for client users who don't have a doc in 'users' collection
+              setUserProfile(null);
+              setRole('Client');
+              router.push('/client-dashboard');
+            }
+            setLoading(false);
+        }, () => setLoading(false));
+         return () => unsubscribeSnapshot();
       } else {
         setUser(null);
         setUserProfile(null);
         setRole(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   const postAuthAction = async (userCredential: any) => {
     const idToken = await userCredential.user.getIdToken();
@@ -78,7 +89,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Server-side session creation failed.' }));
-        // Throw an error with the message from the server to be displayed in the login form
         throw new Error(errorData.error);
     }
   }
@@ -88,11 +98,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await postAuthAction(userCredential);
   };
   
-  // This function remains for potential future use or direct invitation, but is not wired to the UI.
   const handleRegister = async (name: string, email: string, pass: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     
-    // Default new users to 'Client' role if registered via a generic flow.
     await setDoc(doc(db, "users", userCredential.user.uid), {
       name: name,
       email: email,
@@ -109,8 +117,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await logActivity('Logout', 'Auth', user.uid, `User ${userProfile.name} logged out.`);
     }
     await signOut(auth);
-    // Also clear the server-side session cookie
     await fetch('/api/auth', { method: 'DELETE' });
+    router.push('/login');
   };
 
   const handlePasswordReset = (email: string) => {
