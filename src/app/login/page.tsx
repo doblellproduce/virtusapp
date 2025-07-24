@@ -3,8 +3,6 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import LoginForm from '@/components/login-form';
-import RegisterForm from '@/components/register-form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const Logo = () => (
     <div className="flex flex-col items-center justify-center p-2 text-center">
@@ -20,32 +18,13 @@ export default function LoginPage() {
         <Card className="shadow-2xl">
           <CardHeader className="text-center space-y-4">
             <Logo />
+            <CardTitle className="text-2xl font-bold tracking-tight">Acceso de Personal</CardTitle>
+            <CardDescription>
+                Inicia sesión para administrar el sistema.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Acceso Personal</TabsTrigger>
-                <TabsTrigger value="register">Registro Cliente</TabsTrigger>
-              </TabsList>
-              <TabsContent value="login">
-                 <CardHeader className="p-2 pb-4">
-                  <CardTitle className="text-2xl font-bold tracking-tight text-center">Acceso de Personal</CardTitle>
-                  <CardDescription className="text-center">
-                      Inicia sesión para administrar el sistema.
-                  </CardDescription>
-                </CardHeader>
-                <LoginForm />
-              </TabsContent>
-              <TabsContent value="register">
-                 <CardHeader className="p-2 pb-4">
-                    <CardTitle className="text-2xl font-bold tracking-tight text-center">Crear una Cuenta</CardTitle>
-                    <CardDescription className="text-center">
-                        Regístrate para reservar vehículos.
-                    </CardDescription>
-                </CardHeader>
-                <RegisterForm />
-              </TabsContent>
-            </Tabs>
+          <CardContent>
+            <LoginForm />
           </CardContent>
         </Card>
          <footer className="mt-8 text-center text-xs text-muted-foreground">

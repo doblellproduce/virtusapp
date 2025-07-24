@@ -52,9 +52,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUserProfile(profileData);
           setRole(profileData.role || 'Client');
         } else {
-          // Fallback for users that might exist in Auth but not Firestore
-          setUserProfile({id: authUser.uid, name: authUser.displayName || 'Client', email: authUser.email || '', role: 'Client'});
-          setRole('Client');
+          // This case is for employees that exist in Auth but not Firestore for some reason.
+          // It's a fallback. A proper client user would not have a doc here.
+          setUserProfile({id: authUser.uid, name: authUser.displayName || 'Staff', email: authUser.email || '', role: 'Secretary'});
+          setRole('Secretary');
         }
       } else {
         setUser(null);
@@ -87,10 +88,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await postAuthAction(userCredential);
   };
   
+  // This function remains for potential future use or direct invitation, but is not wired to the UI.
   const handleRegister = async (name: string, email: string, pass: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     
-    // Explicitly set the role for new users
+    // Default new users to 'Client' role if registered via a generic flow.
     await setDoc(doc(db, "users", userCredential.user.uid), {
       name: name,
       email: email,
