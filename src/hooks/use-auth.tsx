@@ -69,15 +69,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   setUserProfile(profileData);
                   const newRole = profileData.role || 'Client';
                   setRole(newRole);
-                   if (newRole !== 'Client') {
+                   if (newRole !== 'Client' && window.location.pathname.startsWith('/login')) {
                       router.push('/dashboard');
-                  } else {
+                  } else if (newRole === 'Client' && !window.location.pathname.startsWith('/client-dashboard')) {
                       router.push('/client-dashboard');
                   }
                 } else {
                   setUserProfile(null);
                   setRole('Client');
-                  router.push('/client-dashboard');
+                  if (!window.location.pathname.startsWith('/client-dashboard')) {
+                    router.push('/client-dashboard');
+                  }
                 }
                 setLoading(false);
             }, (error) => {
@@ -101,7 +103,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [router]);
 
   const handleLogin = async (email: string, pass: string) => {
-    // Just sign in. The onAuthStateChanged listener will handle the rest.
     await signInWithEmailAndPassword(auth, email, pass);
   };
   
