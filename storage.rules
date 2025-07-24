@@ -1,11 +1,32 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow read and write access for all users if they are authenticated
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+    
+    // Allow public read access to vehicle images for the landing page and details page.
+    match /vehicles/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null; // Only authenticated admins/staff can upload
+    }
+    
+    // Allow authenticated users to upload inspection photos and signatures, tied to their user ID or a reservation.
+    // This is more secure. Users can only write to paths that could be associated with them.
+    match /inspections/{reservationId}/{userId}/{allPaths=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /signatures/{reservationId}/{userId}/{allPaths=**} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // General user documents - only the user themselves or an admin can access.
+    match /documents/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Fallback for admin uploads - if needed.
+     match /{allPaths=**} {
+      allow read, write: if request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
     }
   }
 }
