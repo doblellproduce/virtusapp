@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const userDocSnap = await userDocRef.get();
     
     let userProfile = null;
-    if (userDocSnap.exists()) {
+    if (userDocSnap.exists) {
         userProfile = userDocSnap.data();
     } else {
         // If the user document doesn't exist, it might be a new client registration.
