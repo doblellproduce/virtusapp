@@ -8,15 +8,16 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // This is the public Firebase config for the client-side
+// It is read from environment variables to ensure the correct configuration is used in different environments (local vs. Vercel).
 const firebaseConfig = {
-  "projectId": "virtus-vehicle-vision",
-  "appId": "1:279152122801:web:4462583277d2e5b92a7b90",
-  "storageBucket": "virtus-vehicle-vision.firebasestorage.app",
-  "apiKey": "AIzaSyDP17qEn4eiVR5vxLcv1BP7RckFDULT5ZI",
-  "authDomain": "virtus-vehicle-vision.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "279152122801"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
 
 // Initialize Firebase on the client-side
 let app: FirebaseApp;
