@@ -7,10 +7,9 @@ import {
     sendPasswordResetEmail,
     signOut,
     signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
     type User,
 } from 'firebase/auth';
-import { doc, onSnapshot, addDoc, collection, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection } from 'firebase/firestore';
 import type { UserProfile, UserRole, ActivityLog } from '@/lib/types';
 import { auth, db, storage } from '@/lib/firebase/client'; 
 import type { Firestore } from 'firebase/firestore';
@@ -27,7 +26,6 @@ interface AuthContextType {
   storage: FirebaseStorage;
   auth: Auth;
   login: (email: string, pass: string) => Promise<void>;
-  register: (name: string, email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logActivity: (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => Promise<void>;
@@ -98,20 +96,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await postAuthAction(userCredential);
   };
   
-  const handleRegister = async (name: string, email: string, pass: string) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    
-    await setDoc(doc(db, "users", userCredential.user.uid), {
-      name: name,
-      email: email,
-      role: 'Client', 
-      photoURL: "",
-    });
-    
-    await logActivity('Create', 'User', userCredential.user.uid, `New client registration: ${name}`);
-    await postAuthAction(userCredential);
-  };
-
   const handleLogout = async () => {
     if (user && userProfile) {
         await logActivity('Logout', 'Auth', user.uid, `User ${userProfile.name} logged out.`);
@@ -147,7 +131,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     userProfile,
     role,
     login: handleLogin,
-    register: handleRegister,
     logout: handleLogout,
     sendPasswordReset: handlePasswordReset,
     logActivity,
