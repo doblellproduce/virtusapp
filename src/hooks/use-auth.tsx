@@ -15,7 +15,7 @@ import { auth, db, storage } from '@/lib/firebase/client';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from "firebase/storage";
 import type { Auth } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -47,22 +47,22 @@ const postAuthAction = async (user: User) => {
     }
 };
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
-        setUser(authUser); // Set user immediately for client-side state
+        setUser(authUser); 
         try {
             await postAuthAction(authUser);
 
-            // If server session is successful, listen for profile changes
             const userDocRef = doc(db, 'users', authUser.uid);
             const unsubscribeSnapshot = onSnapshot(userDocRef, (userDocSnap) => {
                 if (userDocSnap.exists()) {
@@ -70,18 +70,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   setUserProfile(profileData);
                   const newRole = profileData.role || 'Client';
                   setRole(newRole);
-                   if (newRole !== 'Client' && (window.location.pathname === '/login' || window.location.pathname === '/')) {
-                      router.push('/dashboard');
-                  } else if (newRole === 'Client' && !window.location.pathname.startsWith('/client-dashboard')) {
-                      router.push('/client-dashboard');
+
+                  const redirectedFrom = searchParams.get('redirectedFrom');
+
+                  if (newRole !== 'Client') {
+                      router.push(redirectedFrom || '/dashboard');
+                  } else {
+                      router.push(redirectedFrom || '/client-dashboard');
                   }
                 } else {
-                  // This case handles users authenticated with Firebase but without a 'users' doc entry (clients)
                   setUserProfile(null);
                   setRole('Client');
-                   if (!window.location.pathname.startsWith('/client-dashboard')) {
-                    router.push('/client-dashboard');
-                  }
+                  const redirectedFrom = searchParams.get('redirectedFrom');
+                  router.push(redirectedFrom || '/client-dashboard');
                 }
                 setLoading(false);
             }, (error) => {
@@ -91,7 +92,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
              return () => unsubscribeSnapshot();
         } catch (error) {
             console.error("Auth action failed, logging out:", error);
-            await signOut(auth); // Log out on session creation failure
+            await signOut(auth);
         }
       } else {
         setUser(null);
@@ -102,11 +103,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, searchParams]);
 
   const handleLogin = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
-    // onAuthStateChanged will handle the rest
   };
   
   const handleLogout = async () => {
@@ -157,6 +157,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
+}
+
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthProviderContent>{children}</AuthProviderContent>
+    </Suspense>
+  )
 };
 
 export const useAuth = () => {
@@ -166,3 +175,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
