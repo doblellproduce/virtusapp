@@ -217,9 +217,13 @@ export default function VehicleDetailPage() {
     };
     
     try {
+        const idToken = await user.getIdToken();
         const response = await fetch('/api/reservations', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
             body: JSON.stringify(reservationData)
         });
 
