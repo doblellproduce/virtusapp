@@ -2,7 +2,7 @@
 'use server';
 
 import { subMonths, format, startOfMonth } from 'date-fns';
-import { adminDB } from '@/lib/firebase/admin';
+import { adminDB } from '@/lib/firebase/server/admin';
 import type { Reservation, Vehicle, Invoice } from '@/lib/types';
 
 // This function will run on the server to fetch all required data in parallel

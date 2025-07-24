@@ -15,34 +15,20 @@ let adminAuth: Auth;
 let adminDB: Firestore;
 let adminStorage: Storage;
 
-try {
-  if (getApps().length > 0) {
-    adminApp = getApps().find(app => app.name === 'firebase-admin-app') || initializeApp({
-      credential: cert(serviceAccount),
-      storageBucket: `${serviceAccount.projectId}.appspot.com`,
-    }, 'firebase-admin-app');
-  } else {
+// A unique name for the admin app to avoid conflicts
+const adminAppName = 'firebase-admin-app';
+
+if (getApps().some(app => app.name === adminAppName)) {
+    adminApp = getApps().find(app => app.name === adminAppName)!;
+} else {
     adminApp = initializeApp({
       credential: cert(serviceAccount),
       storageBucket: `${serviceAccount.projectId}.appspot.com`,
-    }, 'firebase-admin-app');
-  }
-
-  adminAuth = getAuth(adminApp);
-  adminDB = getFirestore(adminApp);
-  adminStorage = getStorage(adminApp);
-
-} catch (error) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('Firebase Admin SDK not initialized. This is expected in a client-side context.');
-  } else {
-    console.error("Firebase Admin SDK initialization error:", error);
-  }
-  // Set to any to avoid type errors in modules that import them
-  adminApp = {} as any;
-  adminAuth = {} as any;
-  adminDB = {} as any;
-  adminStorage = {} as any;
+    }, adminAppName);
 }
+
+adminAuth = getAuth(adminApp);
+adminDB = getFirestore(adminApp);
+adminStorage = getStorage(adminApp);
 
 export { adminApp, adminAuth, adminDB, adminStorage };

@@ -1,45 +1,33 @@
 
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getAuth, Auth } from 'firebase-admin/auth';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { getStorage, Storage } from 'firebase-admin/storage';
+// This file is intended for client-side Firebase initialization and exports.
+// It should NOT contain any server-side code, like the Firebase Admin SDK.
 
-const serviceAccount = {
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+
+// This is the public Firebase config for the client-side
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let adminApp: App;
-let adminAuth: Auth;
-let adminDB: Firestore;
-let adminStorage: Storage;
+// Initialize Firebase on the client-side
+let app: FirebaseApp;
 
-try {
-  if (getApps().length > 0) {
-    adminApp = getApps()[0];
-  } else {
-    adminApp = initializeApp({
-      credential: cert(serviceAccount),
-      storageBucket: `${serviceAccount.projectId}.appspot.com`,
-    });
-  }
-
-  adminAuth = getAuth(adminApp);
-  adminDB = getFirestore(adminApp);
-  adminStorage = getStorage(adminApp);
-
-} catch (error) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('Firebase Admin SDK not initialized. This is expected in a client-side context.');
-  } else {
-    console.error("Firebase Admin SDK initialization error:", error);
-  }
-  // Set to any to avoid type errors in modules that import them
-  adminApp = {} as any;
-  adminAuth = {} as any;
-  adminDB = {} as any;
-  adminStorage = {} as any;
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
 }
 
-export { adminApp, adminAuth, adminDB, adminStorage };
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+export { app, auth, db, storage };

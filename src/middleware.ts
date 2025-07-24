@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth } from '@/lib/firebase/server/admin';
 
 const publicPaths = ['/login', '/contrato'];
 const publicApiPaths = ['/api/auth']; // API for login/logout is public

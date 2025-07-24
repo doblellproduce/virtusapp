@@ -1,62 +1,49 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the user is authenticated.
+
+    // Helper function to check if a user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // Helper function to get user's role and tenantId from the users collection.
-    // This is more secure as it relies on server-side data, not client claims.
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
 
-    // Default deny all access unless explicitly allowed.
+    // Default to denying all access. This is a security best practice.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // USERS: Only authenticated users can read profiles, only admins can list them.
-    // A user can always update their own profile.
+    // Allow authenticated users to read and write to the main collections
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow update: if isAuthenticated() && request.auth.uid == userId;
-      // create and delete should be handled by secure backend functions.
+      allow read, write: if isAuthenticated();
     }
-
-    // TENANTS: Managed only by SuperAdmins via backend functions.
-    match /tenants/{tenantId} {
-       allow read, write: if false; // To be managed by SuperAdmin role later.
+    match /vehicles/{vehicleId} {
+      allow read, write: if isAuthenticated();
     }
-
-    // All other collections are multi-tenant and access is based on the user's tenantId and role.
-    match /{collection}/{docId} {
-      // READ access: User must be authenticated and the document's tenantId must match the user's tenantId.
-      allow read: if isAuthenticated() && 
-                      resource.data.tenantId == getUserData(request.auth.uid).tenantId;
-
-      // WRITE access (create, update): User must be authenticated and the document's tenantId must match.
-      // Roles can provide more granular control.
-      allow create, update: if isAuthenticated() && 
-                               request.resource.data.tenantId == getUserData(request.auth.uid).tenantId &&
-                               (getUserData(request.auth.uid).role in ['Admin', 'Supervisor', 'Secretary']);
-      
-      // DELETE access: More restrictive, typically only Admins or Supervisors.
-      allow delete: if isAuthenticated() && 
-                      resource.data.tenantId == getUserData(request.auth.uid).tenantId &&
-                      (getUserData(request.auth.uid).role in ['Admin', 'Supervisor']);
+    match /reservations/{reservationId} {
+       allow read, write: if isAuthenticated();
     }
-
-    // Activity Logs: Can only be created by authenticated users within their tenant. Read is more restricted.
+    match /customers/{customerId} {
+       allow read, write: if isAuthenticated();
+    }
+    match /invoices/{invoiceId} {
+       allow read, write: if isAuthenticated();
+    }
+     match /expenses/{expenseId} {
+       allow read, write: if isAuthenticated();
+    }
+    match /maintenanceLogs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
     match /activityLogs/{logId} {
-        allow create: if isAuthenticated() && request.resource.data.tenantId == getUserData(request.auth.uid).tenantId;
-        allow read: if isAuthenticated() && 
-                      resource.data.tenantId == getUserData(request.auth.uid).tenantId &&
-                      (getUserData(request.auth.uid).role in ['Admin', 'Supervisor']);
-        allow update, delete: if false; // Logs should be immutable
+      allow read, write: if isAuthenticated();
+    }
+     match /documents/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /contracts/{contractId} {
+      allow read, write: if isAuthenticated();
     }
   }
 }
