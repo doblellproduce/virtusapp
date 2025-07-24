@@ -32,11 +32,6 @@ export default function LoginPage() {
         </Card>
          <footer className="mt-8 text-center text-xs text-muted-foreground">
             <p>© {new Date().getFullYear()} Virtus Car Rental S.R.L. | Todos los derechos reservados.</p>
-            <p className="mt-2">
-                <Button variant="link" asChild className="p-0 h-auto">
-                    <Link href="/">Volver a la página principal</Link>
-                </Button>
-            </p>
         </footer>
       </div>
     </main>
