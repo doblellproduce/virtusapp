@@ -127,8 +127,13 @@ export default function ReservationsClient() {
 
     const generateNewReservationId = () => {
         const maxId = reservations.reduce((max, res) => {
-            const idNum = parseInt(res.id.split('-')[1]);
-            return idNum > max ? idNum : max;
+            if (res && res.id && typeof res.id === 'string') {
+                const idNum = parseInt(res.id.split('-')[1]);
+                if (!isNaN(idNum) && idNum > max) {
+                    return idNum;
+                }
+            }
+            return max;
         }, 0);
         return `RES-${String(maxId + 1).padStart(3, '0')}`;
     };
@@ -368,13 +373,12 @@ export default function ReservationsClient() {
         }
         const lowercasedTerm = searchTerm.toLowerCase();
         return reservations.filter(res => {
-            // Safely check for both customerName and id before calling toLowerCase
-            const customerNameMatch = res.customerName && typeof res.customerName === 'string' 
-                ? res.customerName.toLowerCase().includes(lowercasedTerm) 
-                : false;
-            const idMatch = res.id && typeof res.id === 'string'
-                ? res.id.toLowerCase().includes(lowercasedTerm)
-                : false;
+            // Robustly check if res and its properties exist before calling toLowerCase
+            if (!res) return false;
+            
+            const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
+            const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
+                
             return customerNameMatch || idMatch;
         });
     }, [reservations, searchTerm]);
@@ -418,19 +422,19 @@ export default function ReservationsClient() {
                         </TableHeader>
                         <TableBody>
                             {filteredReservations.map((res) => (
-                                <TableRow key={res.id} className={highlightedRes === res.id ? 'bg-primary/10 transition-all duration-500' : ''}>
-                                    <TableCell className="font-medium">{res.id}</TableCell>
-                                    <TableCell>{res.customerName}</TableCell>
-                                    <TableCell>{res.vehicle}</TableCell>
-                                    <TableCell>{res.pickupDate}</TableCell>
-                                    <TableCell>{res.dropoffDate}</TableCell>
-                                    <TableCell>${res.totalCost?.toFixed(2) || 'N/A'}</TableCell>
+                                <TableRow key={res?.id || Math.random()} className={highlightedRes === res.id ? 'bg-primary/10 transition-all duration-500' : ''}>
+                                    <TableCell className="font-medium">{res?.id || 'N/A'}</TableCell>
+                                    <TableCell>{res?.customerName || 'N/A'}</TableCell>
+                                    <TableCell>{res?.vehicle || 'N/A'}</TableCell>
+                                    <TableCell>{res?.pickupDate || 'N/A'}</TableCell>
+                                    <TableCell>{res?.dropoffDate || 'N/A'}</TableCell>
+                                    <TableCell>${res?.totalCost?.toFixed(2) || 'N/A'}</TableCell>
                                     <TableCell>
                                         <Badge
-                                            variant={getStatusVariant(res.status)}
-                                            className={getStatusClass(res.status)}
+                                            variant={getStatusVariant(res?.status)}
+                                            className={getStatusClass(res?.status)}
                                         >
-                                            {res.status}
+                                            {res?.status || 'Unknown'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -591,7 +595,3 @@ export default function ReservationsClient() {
 }
 
     
-
-    
-
-

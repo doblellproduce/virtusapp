@@ -597,13 +597,3 @@ export default function ReservationsClient() {
         </div>
     );
 }
-
-    
-
-    
-
-
-
-
-    
-
