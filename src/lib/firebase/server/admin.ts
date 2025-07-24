@@ -16,7 +16,7 @@ let adminAuth: Auth;
 let adminDB: Firestore;
 let adminStorage: Storage;
 
-if (!getApps().length) {
+if (getApps().length === 0) {
     adminApp = initializeApp({
       credential: cert(serviceAccount),
       storageBucket: `${serviceAccount.projectId}.appspot.com`,

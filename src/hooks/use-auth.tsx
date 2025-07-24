@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUserProfile(profileData);
           setRole(profileData.role || 'Client');
         } else {
+          // Fallback for users that might exist in Auth but not Firestore
           setUserProfile({id: authUser.uid, name: authUser.displayName || 'Client', email: authUser.email || '', role: 'Client'});
           setRole('Client');
         }
@@ -76,6 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Server-side session creation failed.' }));
+        // Throw an error with the message from the server to be displayed in the login form
         throw new Error(errorData.error);
     }
   }
@@ -88,6 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const handleRegister = async (name: string, email: string, pass: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     
+    // Explicitly set the role for new users
     await setDoc(doc(db, "users", userCredential.user.uid), {
       name: name,
       email: email,
@@ -104,6 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await logActivity('Logout', 'Auth', user.uid, `User ${userProfile.name} logged out.`);
     }
     await signOut(auth);
+    // Also clear the server-side session cookie
     await fetch('/api/auth', { method: 'DELETE' });
   };
 

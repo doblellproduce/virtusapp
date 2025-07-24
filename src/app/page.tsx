@@ -11,16 +11,21 @@ export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        if (role === 'Client') {
-            router.replace('/client-dashboard');
-        } else {
-            router.replace('/dashboard');
-        }
+    if (loading) {
+      // Do nothing while auth state is loading to prevent premature redirects
+      return;
+    }
+
+    if (user) {
+      if (role === 'Client') {
+          router.replace('/client-dashboard');
       } else {
-        router.replace('/login');
+          // Redirect admins, supervisors, etc. to the main dashboard
+          router.replace('/dashboard');
       }
+    } else {
+      // If no user and not loading, redirect to login
+      router.replace('/login');
     }
   }, [user, loading, role, router]);
 
