@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Loader2, RefreshCw } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,10 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, doc, updateDoc, addDoc, query, orderBy, getDocs, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, addDoc, query, orderBy, getDocs } from 'firebase/firestore';
 import type { Vehicle, MaintenanceLog, Expense } from '@/lib/types';
 
-type NewMaintenanceLog = Omit<MaintenanceLog, 'id' | 'vehicleName' | 'createdBy' | 'tenantId'>;
+type NewMaintenanceLog = Omit<MaintenanceLog, 'id' | 'vehicleName' | 'createdBy'>;
 
 const emptyLog: NewMaintenanceLog = {
     vehicleId: '',
@@ -30,7 +29,7 @@ const emptyLog: NewMaintenanceLog = {
 
 export default function MaintenancePage() {
     const { toast } = useToast();
-    const { db, userProfile } = useAuth();
+    const { db, user, logActivity } = useAuth();
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
     const [logs, setLogs] = React.useState<MaintenanceLog[]>([]);
     const [loading, setLoading] = React.useState(true);
@@ -39,16 +38,14 @@ export default function MaintenancePage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const fetchData = React.useCallback(async () => {
-        if (!db || !userProfile?.tenantId) return;
+        if (!db) return;
         setLoading(true);
         try {
-            const vehiclesQuery = query(collection(db, 'vehicles'), where('tenantId', '==', userProfile.tenantId));
-            const vehiclesSnapshot = await getDocs(vehiclesQuery);
+            const vehiclesSnapshot = await getDocs(query(collection(db, 'vehicles'), orderBy('make')));
             const vehiclesData = vehiclesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
 
-            const logsQuery = query(collection(db, 'maintenanceLogs'), where('tenantId', '==', userProfile.tenantId), orderBy('date', 'desc'));
-            const logsSnapshot = await getDocs(logsQuery);
+            const logsSnapshot = await getDocs(query(collection(db, 'maintenanceLogs'), orderBy('date', 'desc')));
             const logsData = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog));
             setLogs(logsData);
 
@@ -58,7 +55,7 @@ export default function MaintenancePage() {
         } finally {
             setLoading(false);
         }
-    }, [toast, db, userProfile?.tenantId]);
+    }, [toast, db]);
 
     React.useEffect(() => {
         if(db) fetchData();
@@ -80,7 +77,7 @@ export default function MaintenancePage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !userProfile) {
+        if (!db || !user) {
             toast({ variant: 'destructive', title: 'Error', description: 'Database not available or user not logged in.' });
             return;
         }
@@ -96,14 +93,13 @@ export default function MaintenancePage() {
         const newLog: Omit<MaintenanceLog, 'id'> = {
             ...logData,
             vehicleName: `${selectedVehicle.make} ${selectedVehicle.model}`,
-            createdBy: userProfile.name,
-            tenantId: userProfile.tenantId,
+            createdBy: user.displayName || 'System Admin',
         };
         
         try {
             // Add the new log to the maintenanceLogs collection
             const logDocRef = await addDoc(collection(db, 'maintenanceLogs'), newLog);
-            // await logActivity('Create', 'Maintenance', logDocRef.id, `Logged ${newLog.serviceType} for ${newLog.vehicleName}`);
+            await logActivity('Create', 'Maintenance', logDocRef.id, `Logged ${newLog.serviceType} for ${newLog.vehicleName}`);
             
             // If there's a cost, create an expense automatically
             if (parseFloat(newLog.cost) > 0) {
@@ -113,12 +109,11 @@ export default function MaintenancePage() {
                     amount: newLog.cost,
                     date: newLog.date,
                     status: 'Paid', // Assuming maintenance is paid immediately
-                    createdBy: userProfile.name,
+                    createdBy: user.displayName || 'System Admin',
                     vehicleId: selectedVehicle.id,
-                    tenantId: userProfile.tenantId,
                 };
                 const expenseDocRef = await addDoc(collection(db, 'expenses'), newExpense);
-                // await logActivity('Create', 'Expense', expenseDocRef.id, `Auto-created expense for maintenance log ${logDocRef.id}`);
+                await logActivity('Create', 'Expense', expenseDocRef.id, `Auto-created expense for maintenance log ${logDocRef.id}`);
             }
 
             // Update the vehicle's status to 'Maintenance' and its last service date
@@ -127,7 +122,7 @@ export default function MaintenancePage() {
                 status: 'Maintenance',
                 lastServiceDate: newLog.date 
             });
-            // await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Maintenance (new log).`);
+            await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Maintenance (new log).`);
 
             toast({ title: 'Maintenance Logged', description: `Service for ${newLog.vehicleName} has been recorded and status updated.` });
             setOpen(false);
@@ -164,16 +159,10 @@ export default function MaintenancePage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Vehicle Maintenance</h1>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button onClick={handleOpenDialog}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Log Maintenance
-                    </Button>
-                </div>
+                <Button onClick={handleOpenDialog}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Log Maintenance
+                </Button>
             </div>
             
             <Card>

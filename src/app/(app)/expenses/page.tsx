@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, CheckCircle, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, addDoc, updateDoc, doc, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 type Expense = {
     id: string;
@@ -23,11 +23,10 @@ type Expense = {
     date: string;
     status: 'Pending' | 'Paid' | 'Overdue';
     createdBy: string;
-    tenantId: string;
 }
-type NewExpense = Omit<Expense, 'id' | 'tenantId'>;
+type NewExpense = Omit<Expense, 'id'>;
 
-const emptyExpense: Omit<Expense, 'id' | 'createdBy' | 'tenantId'> = {
+const emptyExpense: Omit<Expense, 'id' | 'createdBy'> = {
     description: '',
     category: 'Maintenance',
     amount: '',
@@ -37,7 +36,7 @@ const emptyExpense: Omit<Expense, 'id' | 'createdBy' | 'tenantId'> = {
 
 export default function ExpensesPage() {
     const { toast } = useToast();
-    const { db, role, userProfile } = useAuth();
+    const { db, user, role, logActivity } = useAuth();
     const [expenses, setExpenses] = React.useState<Expense[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [open, setOpen] = React.useState(false);
@@ -48,15 +47,9 @@ export default function ExpensesPage() {
     const isEditing = editingExpense !== null;
     const canEdit = role === 'Admin' || role === 'Supervisor';
 
-    const fetchExpenses = React.useCallback(() => {
-        if (!db || !userProfile?.tenantId) return;
-        setLoading(true);
-        const q = query(
-            collection(db, 'expenses'), 
-            where('tenantId', '==', userProfile.tenantId), 
-            orderBy('date', 'desc')
-        );
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+    React.useEffect(() => {
+        if (!db) return;
+        const unsubscribe = onSnapshot(collection(db, 'expenses'), (snapshot) => {
             const expensesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
             setExpenses(expensesData);
             setLoading(false);
@@ -65,13 +58,8 @@ export default function ExpensesPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch expenses.' });
             setLoading(false);
         });
-        return unsubscribe;
-    }, [db, toast, userProfile?.tenantId]);
-
-    React.useEffect(() => {
-        const unsubscribe = fetchExpenses();
-        return () => unsubscribe && unsubscribe();
-    }, [fetchExpenses]);
+        return () => unsubscribe();
+    }, [db, toast]);
 
     const handleOpenDialog = (expense: Expense | null = null) => {
         if (expense) {
@@ -99,27 +87,24 @@ export default function ExpensesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !userProfile) return;
+        if (!db || !user) return;
         setIsSubmitting(true);
 
         const dataToSave = {
             ...expenseData,
             amount: parseFloat(expenseData.amount).toFixed(2),
-            createdBy: userProfile.name,
-            tenantId: userProfile.tenantId,
+            createdBy: user.displayName || 'System Admin',
         };
 
         try {
             if (isEditing && editingExpense) {
                 const expenseRef = doc(db, 'expenses', editingExpense.id);
-                // We don't update tenantId on edit
-                const { tenantId, ...updateData } = dataToSave;
-                await updateDoc(expenseRef, updateData);
-                // await logActivity('Update', 'Expense', editingExpense.id, `Updated expense: ${dataToSave.description}`);
+                await updateDoc(expenseRef, dataToSave);
+                await logActivity('Update', 'Expense', editingExpense.id, `Updated expense: ${dataToSave.description}`);
                 toast({ title: 'Expense Updated', description: 'The expense has been successfully updated.' });
             } else {
                 const newDocRef = await addDoc(collection(db, 'expenses'), dataToSave);
-                // await logActivity('Create', 'Expense', newDocRef.id, `Created expense: ${dataToSave.description} for $${dataToSave.amount}`);
+                await logActivity('Create', 'Expense', newDocRef.id, `Created expense: ${dataToSave.description} for $${dataToSave.amount}`);
                 toast({ title: 'Expense Added', description: 'The new expense has been recorded.' });
             }
             setOpen(false);
@@ -136,7 +121,7 @@ export default function ExpensesPage() {
         const expenseRef = doc(db, 'expenses', expenseId);
         try {
             await updateDoc(expenseRef, { status: 'Paid' });
-            // await logActivity('Update', 'Expense', expenseId, `Marked expense as Paid.`);
+            await logActivity('Update', 'Expense', expenseId, `Marked expense as Paid.`);
             toast({
                 title: "Expense Paid",
                 description: `Expense has been marked as paid.`,
@@ -172,16 +157,10 @@ export default function ExpensesPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Expenses</h1>
-                 <div className="flex items-center gap-2">
-                     <Button variant="outline" size="sm" onClick={fetchExpenses} disabled={loading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button onClick={() => handleOpenDialog()}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Expense
-                    </Button>
-                </div>
+                <Button onClick={() => handleOpenDialog()}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Expense
+                </Button>
             </div>
             <Card>
                 <CardHeader>

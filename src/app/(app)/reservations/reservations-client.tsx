@@ -22,7 +22,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { CustomerCombobox } from '@/components/customer-combobox';
 import DepartureInspectionModal from '@/components/departure-inspection-modal';
 
-type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection' | 'tenantId'>;
+type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection'>;
 
 const emptyReservation: NewReservation = {
     customerId: '',
@@ -34,7 +34,7 @@ const emptyReservation: NewReservation = {
 };
 
 export default function ReservationsClient() {
-    const { user, db, storage, userProfile } = useAuth();
+    const { user, db, storage, logActivity } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -52,32 +52,25 @@ export default function ReservationsClient() {
     const [inspectionType, setInspectionType] = React.useState<'departure' | 'return'>('departure');
 
     React.useEffect(() => {
-        if (!db || !userProfile?.tenantId) return;
-
-        const vehiclesQuery = query(collection(db, 'vehicles'), where('tenantId', '==', userProfile.tenantId));
-        const unsubVehicles = onSnapshot(vehiclesQuery, (snapshot) => {
+        if (!db) return;
+        const unsubVehicles = onSnapshot(collection(db, 'vehicles'), (snapshot) => {
             const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
         });
-
-        const reservationsQuery = query(collection(db, 'reservations'), where('tenantId', '==', userProfile.tenantId));
-        const unsubReservations = onSnapshot(reservationsQuery, (snapshot) => {
+        const unsubReservations = onSnapshot(collection(db, 'reservations'), (snapshot) => {
             const reservationsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
             setReservations(reservationsData);
         });
-        
-        const customersQuery = query(collection(db, 'customers'), where('tenantId', '==', userProfile.tenantId));
-        const unsubCustomers = onSnapshot(customersQuery, (snapshot) => {
+        const unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
             setCustomers(customersData);
         });
-
         return () => {
             unsubVehicles();
             unsubReservations();
             unsubCustomers();
         };
-    }, [db, userProfile?.tenantId]);
+    }, [db]);
 
     React.useEffect(() => {
         const viewId = searchParams.get('view');
@@ -140,11 +133,10 @@ export default function ReservationsClient() {
     };
 
     const checkVehicleAvailability = async (vehicleId: string, pickup: string, dropoff: string, excludeReservationId?: string) => {
-        if(!db || !userProfile?.tenantId) return true;
+        if(!db) return true;
         
         let reservationsRef = query(
             collection(db, "reservations"),
-            where("tenantId", "==", userProfile.tenantId),
             where("vehicleId", "==", vehicleId),
             where("status", "in", ["Upcoming", "Active"])
         );
@@ -175,7 +167,7 @@ export default function ReservationsClient() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !userProfile) return;
+        if (!db) return;
 
         const isAvailable = await checkVehicleAvailability(reservationData.vehicleId, reservationData.pickupDate, reservationData.dropoffDate, isEditing ? editingReservation?.id : undefined);
         if (!isAvailable) {
@@ -203,16 +195,16 @@ export default function ReservationsClient() {
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
             });
 
-            // await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customerName}.`);
+            await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customerName}.`);
 
             if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
                 const oldVehicleRef = doc(db, 'vehicles', originalVehicleId);
                 await updateDoc(oldVehicleRef, { status: 'Available' });
-                // await logActivity('Update', 'Vehicle', originalVehicleId, `Status set to Available (reservation updated).`);
+                await logActivity('Update', 'Vehicle', originalVehicleId, `Status set to Available (reservation updated).`);
 
                 const newVehicleRef = doc(db, 'vehicles', selectedVehicle.id);
                 await updateDoc(newVehicleRef, { status: 'Rented' });
-                // await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (reservation updated).`);
+                await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (reservation updated).`);
             }
 
             toast({ title: "Reservation Updated" });
@@ -222,14 +214,13 @@ export default function ReservationsClient() {
                 ...reservationData,
                 vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
                 agent: agentName,
-                tenantId: userProfile.tenantId,
             };
             await setDoc(doc(db, 'reservations', newId), reservationToAdd);
-            // await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customerName} with vehicle ${reservationToAdd.vehicle}`);
+            await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customerName} with vehicle ${reservationToAdd.vehicle}`);
 
             const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
             await updateDoc(vehicleRef, { status: 'Rented' });
-            // await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (new reservation).`);
+            await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (new reservation).`);
 
             toast({ title: "Reservation Created" });
         }
@@ -251,8 +242,8 @@ export default function ReservationsClient() {
         const vehicleRef = doc(db, 'vehicles', reservation.vehicleId);
         await updateDoc(vehicleRef, { status: 'Available' });
         
-        // await logActivity('Cancel', 'Reservation', reservation.id, `Cancelled reservation for ${reservation.customerName}.`);
-        // await logActivity('Update', 'Vehicle', reservation.vehicleId, `Status set to Available (reservation cancelled).`);
+        await logActivity('Cancel', 'Reservation', reservation.id, `Cancelled reservation for ${reservation.customerName}.`);
+        await logActivity('Update', 'Vehicle', reservation.vehicleId, `Status set to Available (reservation cancelled).`);
 
         toast({
             title: "Reservation Cancelled",
@@ -261,7 +252,7 @@ export default function ReservationsClient() {
     };
     
     const handleGenerateInvoice = async (reservation: Reservation) => {
-        if (!db || !userProfile) return;
+        if (!db) return;
         const agentName = user?.displayName ?? 'System';
         
         const newInvoiceId = `INV-2024-${String(Date.now()).slice(-4)}`;
@@ -274,12 +265,11 @@ export default function ReservationsClient() {
             status: 'Draft' as const,
             createdBy: agentName,
             paymentMethod: 'N/A' as const,
-            reservationId: reservation.id, 
-            tenantId: userProfile.tenantId,
+            reservationId: reservation.id, // <-- Added reference ID
         };
 
         await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice);
-        // await logActivity('Create', 'Invoice', newInvoiceId, `Generated invoice for reservation ${reservation.id}`);
+        await logActivity('Create', 'Invoice', newInvoiceId, `Generated invoice for reservation ${reservation.id}`);
         
         toast({
             title: 'Invoice Generated',
@@ -331,7 +321,7 @@ export default function ReservationsClient() {
                     departureInspection: inspectionData,
                     status: 'Active',
                 });
-                // await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
+                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
                 toast({ title: 'Inspection Complete', description: 'Vehicle departure inspection has been saved.' });
             } else {
                  await updateDoc(resRef, {
@@ -341,8 +331,8 @@ export default function ReservationsClient() {
                 const vehicleRef = doc(db, 'vehicles', inspectingReservation.vehicleId);
                 await updateDoc(vehicleRef, { status: 'Available' });
 
-                // await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed return inspection.');
-                // await logActivity('Update', 'Vehicle', inspectingReservation.vehicleId, 'Status set to Available (return inspection).');
+                await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed return inspection.');
+                await logActivity('Update', 'Vehicle', inspectingReservation.vehicleId, 'Status set to Available (return inspection).');
                 toast({ title: 'Return Complete', description: 'Vehicle return inspection has been saved.' });
             }
             

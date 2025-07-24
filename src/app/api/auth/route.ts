@@ -1,7 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
-import type { UserProfile } from '@/lib/types';
+import { adminAuth, adminDB } from '@/lib/firebase/admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,16 +19,15 @@ export async function POST(request: NextRequest) {
     if (!userDocSnap.exists) {
         return NextResponse.json({ error: 'User profile not found in database.' }, { status: 404 });
     }
-    const userProfile = userDocSnap.data() as UserProfile;
+    const userProfile = userDocSnap.data();
 
     await adminDB.collection('activityLogs').add({
         timestamp: new Date().toISOString(),
-        user: userProfile.name || userProfile.email,
+        user: userProfile?.name || userProfile?.email,
         action: 'Login',
         entityType: 'Auth',
         entityId: uid,
-        details: `User ${userProfile.name} logged in.`,
-        tenantId: userProfile.tenantId,
+        details: `User ${userProfile?.name} logged in.`
     });
     
     const response = NextResponse.json({ success: true, message: 'Authentication successful.' });

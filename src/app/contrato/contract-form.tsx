@@ -57,7 +57,6 @@ type ReservationData = {
     dropoffDate: string;
     insurance: typeof insuranceOptions[0];
     totalCost: number;
-    tenantId: string;
 }
 
 export default function ContractForm() {
@@ -127,7 +126,6 @@ export default function ContractForm() {
             status: 'Signed' as const,
             reservationId: reservation.id,
             formData: { ...formData, ...reservation },
-            tenantId: reservation.tenantId,
         };
 
         try {
@@ -371,5 +369,3 @@ const TermsAndConditions = () => (
         </ol>
     </div>
 );
-
-    

@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UploadCloud, MoreHorizontal, Trash2, Download, FileText, Loader2, RefreshCw } from 'lucide-react';
+import { UploadCloud, MoreHorizontal, Trash2, Download, FileText, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 type Document = {
@@ -25,10 +25,9 @@ type Document = {
     fileName: string;
     status: 'Verified' | 'Pending' | 'Rejected' | 'Signed';
     reservationId?: string;
-    tenantId: string;
 }
 
-type NewDocument = Omit<Document, 'id' | 'date' | 'fileUrl' | 'fileName' | 'status' | 'tenantId' | 'reservationId'> & {
+type NewDocument = Omit<Document, 'id' | 'date' | 'fileUrl' | 'fileName' | 'status' | 'reservationId'> & {
     file: File | null;
 }
 
@@ -40,19 +39,19 @@ const emptyDocument: NewDocument = {
 
 
 export default function DocumentsPage() {
-    const { db, storage, userProfile } = useAuth();
+    const { db, storage } = useAuth();
     const [documents, setDocuments] = React.useState<Document[]>([]);
     const [newDocument, setNewDocument] = React.useState<NewDocument>(emptyDocument);
     const { toast } = useToast();
     const [loading, setLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-    const fetchDocs = React.useCallback(() => {
-        if(!db || !userProfile?.tenantId) return;
+    React.useEffect(() => {
+        if(!db) return;
         setLoading(true);
 
-        const manualDocsQuery = query(collection(db, "documents"), where('tenantId', '==', userProfile.tenantId), orderBy("date", "desc"));
-        const contractsQuery = query(collection(db, "contracts"), where('tenantId', '==', userProfile.tenantId), orderBy("date", "desc"));
+        const manualDocsQuery = query(collection(db, "documents"), orderBy("date", "desc"));
+        const contractsQuery = query(collection(db, "contracts"), orderBy("date", "desc"));
 
         const unsubDocs = onSnapshot(manualDocsQuery, (docSnapshot) => {
             const manualDocsData = docSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document));
@@ -69,7 +68,6 @@ export default function DocumentsPage() {
                         fileName: data.file.name,
                         status: data.status,
                         reservationId: data.reservationId,
-                        tenantId: data.tenantId,
                     } as Document;
                 });
 
@@ -82,13 +80,7 @@ export default function DocumentsPage() {
              return () => unsubContracts();
         }, () => setLoading(false));
         return () => unsubDocs();
-    }, [db, userProfile?.tenantId]);
-
-
-    React.useEffect(() => {
-        const unsubscribe = fetchDocs();
-        return () => unsubscribe && unsubscribe();
-    }, [fetchDocs]);
+    }, [db]);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,7 +99,7 @@ export default function DocumentsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!newDocument.customer || !newDocument.type || !newDocument.file || !db || !storage || !userProfile?.tenantId) {
+        if(!newDocument.customer || !newDocument.type || !newDocument.file || !db || !storage) {
              toast({
                 variant: "destructive",
                 title: "Incomplete form",
@@ -131,7 +123,6 @@ export default function DocumentsPage() {
                 fileName: newDocument.file.name,
                 date: new Date().toISOString().split('T')[0],
                 status: 'Pending' as const,
-                tenantId: userProfile.tenantId,
             }
             await addDoc(collection(db, 'documents'), documentToAdd);
 
@@ -229,16 +220,8 @@ export default function DocumentsPage() {
                 </Card>
                 <Card className="lg:col-span-2">
                     <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle>All Documents</CardTitle>
-                                <CardDescription>Browse, verify, and manage all customer documents and signed contracts.</CardDescription>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={fetchDocs} disabled={loading}>
-                                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                Refresh
-                            </Button>
-                        </div>
+                        <CardTitle>All Documents</CardTitle>
+                        <CardDescription>Browse, verify, and manage all customer documents and signed contracts.</CardDescription>
                     </CardHeader>
                     <CardContent>
                          {loading ? (
@@ -318,5 +301,3 @@ export default function DocumentsPage() {
         </div>
     );
 }
-
-    

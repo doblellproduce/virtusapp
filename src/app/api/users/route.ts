@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
+import { adminAuth, adminDB } from '@/lib/firebase/admin';
 import type { UserRole } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -21,22 +21,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Validate Input
-    const { email, displayName, role, tenantId } = (await request.json()) as { email: string; displayName: string, role: UserRole, tenantId: string };
-    if (!email || !displayName || !role || !tenantId) {
-      return NextResponse.json({ error: 'Missing required fields: email, displayName, role, tenantId.' }, { status: 400 });
+    const { email, displayName, role } = (await request.json()) as { email: string; displayName: string, role: UserRole };
+    if (!email || !displayName || !role) {
+      return NextResponse.json({ error: 'Missing required fields: email, displayName, role.' }, { status: 400 });
     }
-    
-    // **SECURITY FIX**: Prevent creating another admin via the API
-    if (role === 'Admin') {
-        return NextResponse.json({ error: 'Forbidden: Cannot create an Admin user via this API.' }, { status: 403 });
-    }
-
 
     // 3. Create User in Firebase Auth
     const userRecord = await adminAuth.createUser({
       email: email,
       displayName: displayName,
-      emailVerified: false, 
+      emailVerified: false, // User will verify when they set their password
     });
 
     // 4. Create User Profile in Firestore
@@ -46,20 +40,22 @@ export async function POST(request: NextRequest) {
       email: email,
       role: role,
       photoURL: "",
-      tenantId: tenantId,
     });
 
     // 5. Generate Password Reset Link (acts as an invite)
     const link = await adminAuth.generatePasswordResetLink(email);
     
+    // 6. (Optional but Recommended) Send an invitation email using a service like SendGrid
+    // Example: await sendInviteEmail(email, displayName, link);
+    
+    // 7. Log the activity
     await adminDB.collection('activityLogs').add({
         timestamp: new Date().toISOString(),
         user: userDoc.data()?.name || 'Admin',
         action: 'Create',
         entityType: 'User',
         entityId: userRecord.uid,
-        details: `Invited new user: ${displayName} with role ${role}`,
-        tenantId: tenantId,
+        details: `Invited new user: ${displayName} with role ${role}`
     });
 
 

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Trash2, KeyRound, Search, Loader2, RefreshCw } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, KeyRound, Search, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,37 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import type { UserProfile, UserRole } from '@/lib/types';
-import { collection, doc, updateDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
-// This function now calls our secure backend API Route
-async function inviteUser(email: string, displayName: string, role: UserRole, tenantId: string) {
-    try {
-        const response = await fetch('/api/users', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, displayName, role, tenantId }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error || 'Failed to create user.');
-        }
-
-        return { success: true, message: result.message, newUser: { id: result.uid, email, name: displayName, role, tenantId } };
-
-    } catch (error: any) {
-        console.error("Error inviting user:", error);
-        return { success: false, message: error.message || 'An unknown error occurred.', newUser: null };
-    }
-}
-
-
-type NewUser = Omit<UserProfile, 'id' | 'photoURL' | 'tenantId'>;
+type NewUser = Omit<UserProfile, 'id' | 'photoURL'>;
 
 const emptyUser: NewUser = {
     name: '',
@@ -60,30 +34,23 @@ export default function UsersPage() {
     const [editingUser, setEditingUser] = React.useState<UserProfile | null>(null);
     const [userData, setUserData] = React.useState<NewUser>(emptyUser);
     const { toast } = useToast();
-    const { user: currentUser, userProfile, role: currentUserRole, sendPasswordReset, db } = useAuth();
+    const { user: currentUser, role: currentUserRole, sendPasswordReset, db, logActivity } = useAuth();
     const [searchTerm, setSearchTerm] = React.useState('');
 
-    const fetchUsers = React.useCallback(async () => {
-        if (!db || !userProfile?.tenantId) return;
-        setLoading(true);
-        try {
-            const usersQuery = query(collection(db, 'users'), where('tenantId', '==', userProfile.tenantId));
-            const usersSnapshot = await getDocs(usersQuery);
-            const usersData = usersSnapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as UserProfile))
+    React.useEffect(() => {
+        if (!db) return;
+        const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+            const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile))
                 .filter(user => user.name && user.email);
             setUsers(usersData);
-        } catch (error) {
-            console.error("Error fetching users: ", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch user data.' });
-        } finally {
             setLoading(false);
-        }
-    }, [toast, db, userProfile?.tenantId]);
-
-    React.useEffect(() => {
-        if (db) fetchUsers();
-    }, [fetchUsers, db]);
+        }, (error) => {
+            console.error("Error fetching users: ", error);
+            setLoading(false);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch user data.' });
+        });
+        return () => unsubscribe();
+    }, [db, toast]);
 
     const isCurrentUserAdmin = currentUserRole === 'Admin';
     const isEditing = editingUser !== null;
@@ -110,10 +77,7 @@ export default function UsersPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !userProfile?.tenantId) {
-            toast({ variant: "destructive", title: "Database Error", description: "Database service is not available or tenant is missing." });
-            return;
-        }
+        if (!db) return;
         setIsSubmitting(true);
         
         if (!isCurrentUserAdmin) {
@@ -129,20 +93,19 @@ export default function UsersPage() {
                 email: userData.email,
                 role: userData.role,
             });
-            // The API route now handles logging, so no client-side logActivity call is needed here.
+            await logActivity('Update', 'User', editingUser.id, `Updated user profile for ${userData.name}`);
             toast({ title: "User Updated", description: `Details for ${userData.name} have been updated.` });
         } else {
-            const result = await inviteUser(userData.email, userData.name, userData.role, userProfile.tenantId);
-             if (result.success && result.newUser) {
-                // The API route now handles logging, so no client-side logActivity call is needed here.
-                toast({ title: "User Invited Successfully", description: result.message });
-            } else {
-                toast({ variant: 'destructive', title: "Error Inviting User", description: result.message });
-            }
+            // This is a simplified version. A real app would call a Cloud Function
+            // to create the user in Firebase Auth and then add the profile to Firestore.
+            // For now, we'll just add to Firestore.
+            const newUser = { ...userData, photoURL: "" };
+            const newDocRef = await addDoc(collection(db, 'users'), newUser);
+            await logActivity('Create', 'User', newDocRef.id, `Created new user (Firestore only): ${userData.name}`);
+            toast({ title: "User Added (Firestore Only)", description: "User added to database. Auth user needs to be created separately." });
         }
         setIsSubmitting(false);
         setOpen(false);
-        fetchUsers();
     }
     
     const handleDelete = async (userId: string) => {
@@ -154,10 +117,7 @@ export default function UsersPage() {
              toast({ variant: "destructive", title: "Action Forbidden", description: "You cannot delete your own account." });
              return;
         }
-        if (!db) {
-            toast({ variant: "destructive", title: "Database Error", description: "Database service is not available." });
-            return;
-        }
+        if (!db) return;
         const userToDelete = users.find(u => u.id === userId);
         
         // This is a simulation for now. A real implementation requires a Cloud Function.
@@ -165,10 +125,9 @@ export default function UsersPage() {
         // In a real app, you'd call a Cloud Function here to delete the Auth user and the Firestore doc.
         // For example: await deleteUserFunction({ userId });
         await deleteDoc(doc(db, "users", userId));
-        // The API route now handles logging, so no client-side logActivity call is needed here.
+        await logActivity('Delete', 'User', userId, `Deleted user ${userToDelete?.name}`);
         
         toast({ title: "User Deleted (Firestore Only)", description: `The user ${userToDelete?.name} has been deleted from Firestore. Auth record still exists.` });
-        fetchUsers();
     }
 
     const handleResetPassword = async (user: UserProfile) => {
@@ -182,7 +141,6 @@ export default function UsersPage() {
         }
         try {
             await sendPasswordReset(user.email);
-            // The API route now handles logging, so no client-side logActivity call is needed here.
             toast({
                 title: "Password Reset Sent",
                 description: `A link to reset your password has been sent to ${user.email}.`
@@ -215,16 +173,10 @@ export default function UsersPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold font-headline">User Management</h1>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button onClick={() => handleOpenDialog()} disabled={!isCurrentUserAdmin}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add User
-                    </Button>
-                </div>
+                <Button onClick={() => handleOpenDialog()} disabled={!isCurrentUserAdmin}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add User
+                </Button>
             </div>
             <Card>
                 <CardHeader>
@@ -320,9 +272,9 @@ export default function UsersPage() {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                      <DialogHeader>
-                        <DialogTitle>{isEditing ? 'Edit User' : 'Invite New User'}</DialogTitle>
+                        <DialogTitle>{isEditing ? 'Edit User' : 'Add New User'}</DialogTitle>
                         <DialogDescription>
-                            {isEditing ? 'Update the details for this user.' : 'Fill in the details to invite a new user. An invitation email will be sent.'}
+                            {isEditing ? 'Update the details for this user.' : 'Fill in the details to add a new user. Note: This only creates a Firestore record.'}
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
@@ -355,7 +307,7 @@ export default function UsersPage() {
                             </DialogClose>
                             <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                {isEditing ? 'Save Changes' : 'Send Invite'}
+                                {isEditing ? 'Save Changes' : 'Add User'}
                             </Button>
                         </DialogFooter>
                     </form>

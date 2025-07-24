@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, Loader2, RefreshCw } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -14,9 +14,9 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import type { Customer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
-type NewCustomer = Omit<Customer, 'id' | 'createdAt' | 'tenantId'>;
+type NewCustomer = Omit<Customer, 'id' | 'createdAt'>;
 
 const emptyCustomer: NewCustomer = {
     name: '',
@@ -28,7 +28,7 @@ const emptyCustomer: NewCustomer = {
 };
 
 export default function CustomersPage() {
-    const { db, userProfile } = useAuth();
+    const { db, logActivity } = useAuth();
     const { toast } = useToast();
     
     const [customers, setCustomers] = React.useState<Customer[]>([]);
@@ -40,16 +40,10 @@ export default function CustomersPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
 
     const isEditing = editingCustomer !== null;
-    
-    const fetchCustomers = React.useCallback(() => {
-        if (!db || !userProfile?.tenantId) return;
-        setLoading(true);
-        const q = query(
-            collection(db, 'customers'), 
-            where('tenantId', '==', userProfile.tenantId),
-            orderBy('name')
-        );
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+
+    React.useEffect(() => {
+        if (!db) return;
+        const unsubscribe = onSnapshot(collection(db, 'customers'), (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
             setCustomers(customersData);
             setLoading(false);
@@ -58,13 +52,9 @@ export default function CustomersPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch customers.' });
             setLoading(false);
         });
-        return unsubscribe;
-    }, [db, toast, userProfile?.tenantId]);
 
-    React.useEffect(() => {
-        const unsubscribe = fetchCustomers();
-        return () => unsubscribe && unsubscribe();
-    }, [fetchCustomers]);
+        return () => unsubscribe();
+    }, [db, toast]);
 
     const handleOpenDialog = (customer: Customer | null = null) => {
         if (customer) {
@@ -84,23 +74,22 @@ export default function CustomersPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !userProfile?.tenantId) return;
+        if (!db) return;
         setIsSubmitting(true);
 
         try {
             if (isEditing && editingCustomer) {
                 const customerRef = doc(db, 'customers', editingCustomer.id);
                 await updateDoc(customerRef, customerData);
-                // await logActivity('Update', 'Customer', editingCustomer.id, `Updated customer profile for ${customerData.name}`);
+                await logActivity('Update', 'Customer', editingCustomer.id, `Updated customer profile for ${customerData.name}`);
                 toast({ title: 'Customer Updated', description: 'The customer details have been updated.' });
             } else {
                 const customerToAdd = {
                     ...customerData,
                     createdAt: new Date().toISOString(),
-                    tenantId: userProfile.tenantId,
                 }
                 const newDocRef = await addDoc(collection(db, 'customers'), customerToAdd);
-                // await logActivity('Create', 'Customer', newDocRef.id, `Created new customer: ${customerData.name}`);
+                await logActivity('Create', 'Customer', newDocRef.id, `Created new customer: ${customerData.name}`);
                 toast({ title: 'Customer Added', description: 'The new customer has been saved.' });
             }
             setOpen(false);
@@ -116,7 +105,7 @@ export default function CustomersPage() {
         if (!db) return;
         try {
             await deleteDoc(doc(db, 'customers', customerId));
-            // await logActivity('Delete', 'Customer', customerId, `Deleted customer`);
+            await logActivity('Delete', 'Customer', customerId, `Deleted customer`);
             toast({ title: 'Customer Deleted' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete customer.' });
@@ -141,16 +130,10 @@ export default function CustomersPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Customers</h1>
-                 <div className="flex items-center gap-2">
-                     <Button variant="outline" size="sm" onClick={fetchCustomers} disabled={loading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button onClick={() => handleOpenDialog()}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Customer
-                    </Button>
-                </div>
+                <Button onClick={() => handleOpenDialog()}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Customer
+                </Button>
             </div>
             <Card>
                 <CardHeader>
@@ -288,5 +271,3 @@ export default function CustomersPage() {
         </div>
     );
 }
-
-    

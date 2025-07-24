@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, RefreshCw } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -16,11 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/use-auth';
 import type { Vehicle } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, orderBy, getDocs, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from 'next/image';
 
-type NewVehicle = Omit<Vehicle, 'id' | 'imageUrls' | 'dataAiHint' | 'tenantId'>;
+type NewVehicle = Omit<Vehicle, 'id' | 'imageUrls' | 'dataAiHint'>;
 
 const emptyVehicle: NewVehicle = {
     make: '', model: '', plate: '', category: 'Economy', status: 'Available', pricePerDay: 0,
@@ -28,7 +28,7 @@ const emptyVehicle: NewVehicle = {
 };
 
 export default function VehiclesPage() {
-    const { db, storage, role, userProfile } = useAuth();
+    const { db, storage, role, logActivity } = useAuth();
     const { toast } = useToast();
 
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
@@ -43,29 +43,16 @@ export default function VehiclesPage() {
     const isEditing = editingVehicle !== null;
     const canManageVehicles = role === 'Admin' || role === 'Supervisor';
 
-    const fetchData = React.useCallback(async () => {
-        if (!db || !userProfile?.tenantId) return;
-        setLoading(true);
-        try {
-            const q = query(
-                collection(db, 'vehicles'),
-                where('tenantId', '==', userProfile.tenantId),
-                orderBy('make')
-            );
-            const querySnapshot = await getDocs(q);
-            const vehiclesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-            setVehicles(vehiclesData);
-        } catch (error) {
-            console.error("Error fetching vehicles:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch vehicle data.' });
-        } finally {
-            setLoading(false);
-        }
-    }, [db, toast, userProfile?.tenantId]);
-
     React.useEffect(() => {
-        if(db) fetchData();
-    }, [fetchData, db]);
+        if (!db) return;
+        const unsubscribe = onSnapshot(collection(db, 'vehicles'), (snapshot) => {
+            const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+            setVehicles(vehiclesData);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [db]);
 
     const handleOpenDialog = (vehicle: Vehicle | null = null) => {
         if (vehicle) {
@@ -131,7 +118,7 @@ export default function VehiclesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db || !userProfile?.tenantId) return;
+        if (!db) return;
         setIsSubmitting(true);
         
         try {
@@ -147,20 +134,20 @@ export default function VehiclesPage() {
                     imageUrls: uploadedImageUrls,
                     dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase()
                 });
+                await logActivity('Update', 'Vehicle', editingVehicle.id, `Updated vehicle: ${vehicleData.make} ${vehicleData.model}`);
                 toast({ title: 'Vehicle Updated', description: `${vehicleData.make} ${vehicleData.model} has been updated.` });
             } else {
                 const finalVehicleData = { 
                     ...vehicleData, 
                     imageUrls: uploadedImageUrls,
-                    dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase(),
-                    tenantId: userProfile.tenantId,
+                    dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase()
                 };
-                await addDoc(collection(db, 'vehicles'), finalVehicleData);
+                const newDocRef = await addDoc(collection(db, 'vehicles'), finalVehicleData);
+                await logActivity('Create', 'Vehicle', newDocRef.id, `Created vehicle: ${finalVehicleData.make} ${finalVehicleData.model}`);
                 toast({ title: 'Vehicle Added', description: `${vehicleData.make} ${vehicleData.model} has been added to the fleet.` });
             }
             
             setOpen(false);
-            fetchData(); // Refresh data
         } catch (error) {
             console.error("Failed to save vehicle", error);
         } finally {
@@ -171,8 +158,8 @@ export default function VehiclesPage() {
     const handleDeleteVehicle = async (vehicleId: string) => {
         if (!db) return;
         await deleteDoc(doc(db, "vehicles", vehicleId));
+        await logActivity('Delete', 'Vehicle', vehicleId, 'Deleted vehicle');
         toast({ title: "Vehicle Deleted" });
-        fetchData();
     };
     
     React.useEffect(() => {
@@ -202,16 +189,10 @@ export default function VehiclesPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Vehicles</h1>
-                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </Button>
-                    <Button onClick={() => handleOpenDialog()} disabled={!canManageVehicles}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Vehicle
-                    </Button>
-                </div>
+                <Button onClick={() => handleOpenDialog()} disabled={!canManageVehicles}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Vehicle
+                </Button>
             </div>
             <Card>
                 <CardHeader>
@@ -368,5 +349,3 @@ export default function VehiclesPage() {
         </div>
     );
 }
-
-    

@@ -1,54 +1,16 @@
 
 'use server';
 
-import { headers } from 'next/headers';
 import { subMonths, format, startOfMonth, getMonth, getYear } from 'date-fns';
-import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
-import type { Reservation, Vehicle, Invoice, UserProfile } from '@/lib/types';
-
-
-async function getTenantIdForRequest(): Promise<string | null> {
-    // In a server component, we can't rely on cookies directly in the same way.
-    // However, the middleware adds the Authorization header, which we can use.
-    const authorization = headers().get('Authorization');
-    if (authorization?.startsWith('Bearer ')) {
-        const idToken = authorization.split('Bearer ')[1];
-        try {
-            const decodedToken = await adminAuth.verifyIdToken(idToken);
-            const userDoc = await adminDB.collection('users').doc(decodedToken.uid).get();
-            if (userDoc.exists) {
-                return (userDoc.data() as UserProfile).tenantId;
-            }
-        } catch (error) {
-            console.error("Error verifying token on server:", error);
-        }
-    }
-    // Fallback if headers aren't forwarded correctly, might happen in some scenarios
-    // This part requires careful handling in real-world complex scenarios.
-    // For now, we rely on the middleware forwarding the token.
-    return null;
-}
-
+import { adminDB } from '@/lib/firebase/admin';
+import type { Reservation, Vehicle, Invoice } from '@/lib/types';
 
 // This function will run on the server to fetch all required data in parallel
 export async function getDashboardData() {
-  const tenantId = await getTenantIdForRequest();
-  
-  if (!tenantId) {
-    console.error("Could not determine tenantId for dashboard data.");
-    // Return a default empty state to avoid crashing the client
-    return {
-      stats: { totalRevenue: 0, activeRentals: 0, availableVehicles: 0, vehiclesInMaintenance: 0 },
-      recentReservations: [],
-      recentInvoices: [],
-      chartData: [],
-    };
-  }
-  
   try {
-    const reservationsQuery = adminDB.collection('reservations').where('tenantId', '==', tenantId).orderBy('pickupDate', 'desc').limit(5).get();
-    const vehiclesQuery = adminDB.collection('vehicles').where('tenantId', '==', tenantId).get();
-    const invoicesQuery = adminDB.collection('invoices').where('tenantId', '==', tenantId).orderBy('date', 'desc').get();
+    const reservationsQuery = adminDB.collection('reservations').orderBy('pickupDate', 'desc').limit(5).get();
+    const vehiclesQuery = adminDB.collection('vehicles').get();
+    const invoicesQuery = adminDB.collection('invoices').orderBy('date', 'desc').get();
 
     const [reservationsSnapshot, vehiclesSnapshot, invoicesSnapshot] = await Promise.all([
       reservationsQuery,

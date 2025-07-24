@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, onSnapshot, getFirestore, type Firestore, addDoc, collection } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-import type { UserProfile, UserRole } from '@/lib/types';
+import type { UserProfile, UserRole, ActivityLog } from '@/lib/types';
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 
 // This is the public Firebase config for the client-side
@@ -42,6 +42,7 @@ interface AuthContextType extends FirebaseServices {
   login: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
+  logActivity: (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -141,10 +142,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const handleLogout = async () => {
-    if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
+    if (!firebaseServices.auth || !firebaseServices.db) throw new Error("Firebase Auth is not initialized.");
+    
+    await logActivity('Logout', 'Auth', user?.uid || 'unknown', `User ${userProfile?.name} logged out.`);
     await signOut(firebaseServices.auth);
+    
     // Also clear the server-side session
     await fetch('/api/auth', { method: 'DELETE' });
+
     setUser(null);
     setUserProfile(null);
     setRole(null);
@@ -154,6 +159,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!firebaseServices.auth) throw new Error("Firebase Auth is not initialized.");
     return sendPasswordResetEmail(firebaseServices.auth, email);
   };
+  
+  const logActivity = useCallback(async (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => {
+    if (!firebaseServices.db || !userProfile) return;
+    try {
+        await addDoc(collection(firebaseServices.db, 'activityLogs'), {
+            timestamp: new Date().toISOString(),
+            user: userProfile.name,
+            action,
+            entityType,
+            entityId,
+            details,
+        });
+    } catch (error) {
+        console.error("Error logging activity:", error);
+    }
+  }, [firebaseServices.db, userProfile]);
 
   const value: AuthContextType = {
     loading,
@@ -163,6 +184,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     login: handleLogin,
     logout: handleLogout,
     sendPasswordReset: handlePasswordReset,
+    logActivity,
     ...firebaseServices,
   };
 
