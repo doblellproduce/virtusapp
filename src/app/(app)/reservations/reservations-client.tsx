@@ -390,10 +390,12 @@ export default function ReservationsClient() {
     }
     
     const filteredReservations = React.useMemo(() => {
-        if (!searchTerm) {
+        // Ensure searchTerm is a string before calling toLowerCase
+        const term = searchTerm || '';
+        if (!term) {
             return reservations;
         }
-        const lowercasedTerm = searchTerm.toLowerCase();
+        const lowercasedTerm = term.toLowerCase();
         return reservations.filter(res => {
             if (!res) return false;
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
@@ -614,3 +616,4 @@ export default function ReservationsClient() {
 }
     
     
+
