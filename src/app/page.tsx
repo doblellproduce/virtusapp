@@ -11,26 +11,26 @@ export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Solo tomar una decisión de redirección cuando el estado de carga haya terminado.
+    // Only make a redirection decision once the loading state is finished.
     if (!loading) {
       if (user) {
-        // Si hay un usuario, redirigir al dashboard correspondiente a su rol.
+        // If there's a user, redirect to the appropriate dashboard based on their role.
         if (role === 'Client') {
             router.replace('/client-dashboard');
         } else {
             router.replace('/dashboard');
         }
       } else {
-        // Si no hay usuario, la única opción es ir a la página de login.
+        // If there is no user, the only option is to go to the login page.
         router.replace('/login');
       }
     }
-    // La dependencia en 'loading' es crucial. El efecto se volverá a ejecutar
-    // cuando 'loading' cambie de true a false.
+    // The dependency on 'loading' is crucial. The effect will re-run
+    // when 'loading' changes from true to false.
   }, [user, loading, role, router]);
 
-  // Mientras 'loading' sea true, mostramos un spinner.
-  // Esto previene que se muestre cualquier otra cosa o que se intente una redirección prematura.
+  // While 'loading' is true, we show a spinner.
+  // This prevents anything else from being displayed or a premature redirect attempt.
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
