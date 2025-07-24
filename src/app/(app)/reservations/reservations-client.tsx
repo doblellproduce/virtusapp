@@ -62,12 +62,14 @@ export default function ReservationsClient() {
             setReservations(reservationsData);
         }, (error) => {
             console.error("Error fetching reservations: ", error);
-            toast({
-                variant: 'destructive',
-                title: 'Permission Denied',
-                description: 'You may not have permission to view all reservations. Please contact an administrator.',
-                duration: 7000,
-            });
+            if (error.message.includes('permission-denied')) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Permission Denied',
+                    description: 'You may not have permission to view reservations. Please contact an administrator.',
+                    duration: 7000,
+                });
+            }
         });
         const unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));

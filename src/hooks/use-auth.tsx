@@ -131,13 +131,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
   
   const logActivity = useCallback(async (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => {
-    // Use a local copy of userProfile to avoid stale closures.
-    const currentProfile = userProfile;
-    if (!db || !currentProfile) return;
+    if (!db) return;
     try {
         await addDoc(collection(db, 'activityLogs'), {
             timestamp: new Date().toISOString(),
-            user: currentProfile.name || user?.email, // Fallback to email if name is not available
+            user: userProfile?.name || user?.email || 'System',
             action,
             entityType,
             entityId,

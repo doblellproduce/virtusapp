@@ -1,89 +1,79 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- Helper Functions ---
-    // Checks if the user is authenticated.
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    // Checks if the user is an admin, supervisor, or secretary.
+
+    // --- HELPER FUNCTIONS ---
+    // Checks if the user is a staff member (Admin, Supervisor, or Secretary)
     function isStaff() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
     
-    // Checks if the user is a specific role
-    function isRole(role) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    // Checks if the user is a top-level Admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
     }
 
-    // Checks if the user is the owner of the document.
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
+    // --- COLLECTION RULES ---
 
-    // --- Collections ---
-
-    // USERS: Staff can read all users. Admins can manage users. Users can read/update their own profile.
+    // USERS: Staff can manage. Users can manage their own profile.
     match /users/{userId} {
-      allow read: if isStaff() || isOwner(userId);
-      allow update: if isOwner(userId) || isRole('Admin');
-      allow create: if isSignedIn(); // Allow any signed-up user to have a profile created.
-      allow delete: if isRole('Admin');
+      allow read, update: if request.auth.uid == userId || isStaff();
+      // Admins can create new staff users from the panel. Client registration is handled via the customer profile.
+      allow create, delete: if isAdmin();
     }
     
-    // CUSTOMERS: Staff can manage all customer profiles.
+    // CUSTOMERS: Clients create their own profile on registration. Staff can manage.
     match /customers/{customerId} {
-      allow read, create, update, delete: if isStaff();
+      allow read, update, delete: if isStaff();
+      // Allows creation during the registration flow for any authenticated user
+      allow create: if request.auth.uid != null;
     }
-    
-    // VEHICLES: Public can read, only staff can write.
+
+    // VEHICLES: Public read, staff write access.
     match /vehicles/{vehicleId} {
       allow read: if true;
       allow create, update, delete: if isStaff();
     }
-    
-    // RESERVATIONS: Staff can manage all. Authenticated users can create them. Users can read their own.
+
+    // RESERVATIONS: Staff manage all. Clients manage their own.
     match /reservations/{reservationId} {
-      allow read, update, delete: if isStaff() || (isSignedIn() && resource.data.customerId == request.auth.uid);
-      allow create: if isSignedIn();
+      // Allow creation if the user is authenticated and is creating the reservation for themselves.
+      allow create: if request.auth.uid != null && request.auth.uid == request.resource.data.customerId;
+      
+      // Allow staff to read/update all. Clients can only read/update their own.
+      allow read, update: if isStaff() || resource.data.customerId == request.auth.uid;
+      
+      // Only staff can delete, preventing accidental client deletions.
+      allow delete: if isStaff();
     }
     
-    // REVIEWS: Public can read. Authenticated users can create. Admins/Supervisors can manage.
+    // INVOICES & EXPENSES: Full access for staff.
+    match /invoices/{invoiceId} {
+       allow read, create, update, delete: if isStaff();
+    }
+    match /expenses/{expenseId} {
+       allow read, create, update, delete: if isStaff();
+    }
+
+    // REVIEWS: Public read. Write for authenticated users. Management for staff.
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isRole('Admin') || isRole('Supervisor');
+      allow create: if request.auth.uid != null && request.auth.uid == request.resource.data.customerId;
+      allow update, delete: if isStaff();
     }
 
-    // INVOICES, EXPENSES, MAINTENANCE: Staff only.
-    match /invoices/{invoiceId} {
-      allow read, create, update, delete: if isStaff();
-    }
-    
-    match /expenses/{expenseId} {
-      allow read, create, update, delete: if isStaff();
-    }
-
+    // MAINTENANCE, CONTRACTS, ACTIVITY LOGS: Staff management.
     match /maintenanceLogs/{logId} {
-      allow read, create, update, delete: if isStaff();
-    }
-
-    // DOCUMENTS & CONTRACTS: Staff only.
-    match /documents/{documentId} {
-        allow read, create, update, delete: if isStaff();
+       allow read, create, update, delete: if isStaff();
     }
     match /contracts/{contractId} {
         allow read, create, update, delete: if isStaff();
     }
-
-    // ACTIVITY LOGS: Staff can read, any authenticated user action can create one.
     match /activityLogs/{logId} {
       allow read: if isStaff();
-      allow create: if isSignedIn();
+      // Allow any authenticated user to trigger a log write, as the backend function validates the content.
+      allow create: if request.auth.uid != null;
     }
   }
 }

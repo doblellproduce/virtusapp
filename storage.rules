@@ -1,34 +1,32 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-  
-    // Helper function to check for admin/staff roles
-    function isStaff() {
-      return request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
-    }
-
-    // Vehicle images can be read by anyone, but only staff can upload/delete them.
-    match /vehicles/{imageName} {
-      allow read: if true;
-      allow write: if isStaff();
-    }
-
-    // Inspection photos can only be created, read, and deleted by staff members.
-    // The path contains the reservation ID, which can be used for more granular rules if needed later.
-    match /inspections/{reservationId}/{imageName} {
-      allow read, write, delete: if isStaff();
-    }
     
-    // Customer signatures follow the same logic as inspection photos.
-    match /signatures/{reservationId}/{imageName} {
-       allow read, write, delete: if isStaff();
+    // Función auxiliar para verificar si el usuario es un miembro del personal
+    function isStaff() {
+      return get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
 
-    // General documents can only be managed by staff.
-    match /documents/{documentId}/{fileName} {
-      allow read, write, delete: if isStaff();
+    // Las imágenes de los vehículos son de lectura pública para que cualquiera pueda ver la flota.
+    // Solo el personal puede subir o eliminar imágenes de vehículos.
+    match /vehicles/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && isStaff();
+    }
+
+    // Las fotos de inspección y las firmas solo pueden ser creadas por el personal (durante la inspección).
+    // Y solo pueden ser leídas por el personal.
+    match /inspections/{allPaths=**} {
+      allow read, write: if request.auth != null && isStaff();
+    }
+    match /signatures/{allPaths=**} {
+      allow read, write: if request.auth != null && isStaff();
+    }
+
+    // Los documentos cargados (licencias, etc.) solo pueden ser manejados por el personal.
+    match /documents/{allPaths=**} {
+       allow read, write: if request.auth != null && isStaff();
     }
   }
 }
