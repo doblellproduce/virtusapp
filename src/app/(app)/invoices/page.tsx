@@ -113,10 +113,12 @@ export default function InvoicesPage() {
         setOpen(false);
     }
     
-    const filteredInvoices = invoices.filter(invoice => 
-        invoice.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredInvoices = invoices.filter(invoice => {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        const customerMatch = invoice.customer ? invoice.customer.toLowerCase().includes(lowercasedTerm) : false;
+        const idMatch = invoice.id ? invoice.id.toLowerCase().includes(lowercasedTerm) : false;
+        return customerMatch || idMatch;
+    });
 
     // Reset state when dialog closes
     React.useEffect(() => {
@@ -293,3 +295,5 @@ export default function InvoicesPage() {
         </div>
     );
 }
+
+    

@@ -156,8 +156,8 @@ export default function UsersPage() {
     
     const filteredUsers = users.filter(user => {
         const lowercasedTerm = searchTerm.toLowerCase();
-        const nameMatch = user.name?.toLowerCase().includes(lowercasedTerm);
-        const emailMatch = user.email?.toLowerCase().includes(lowercasedTerm);
+        const nameMatch = user.name ? user.name.toLowerCase().includes(lowercasedTerm) : false;
+        const emailMatch = user.email ? user.email.toLowerCase().includes(lowercasedTerm) : false;
         return nameMatch || emailMatch;
     });
 
@@ -316,3 +316,5 @@ export default function UsersPage() {
         </div>
     );
 }
+
+    

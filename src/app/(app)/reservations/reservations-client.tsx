@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -363,7 +364,6 @@ export default function ReservationsClient() {
     
     const filteredReservations = reservations.filter(res => {
         const lowercasedTerm = searchTerm.toLowerCase();
-        // Safely check for customerName and id before calling toLowerCase
         const customerNameMatch = res.customerName ? res.customerName.toLowerCase().includes(lowercasedTerm) : false;
         const idMatch = res.id ? res.id.toLowerCase().includes(lowercasedTerm) : false;
         return customerNameMatch || idMatch;
@@ -579,5 +579,7 @@ export default function ReservationsClient() {
         </div>
     );
 }
+
+    
 
     

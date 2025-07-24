@@ -120,11 +120,13 @@ export default function CustomersPage() {
         }
     }, [open]);
     
-    const filteredCustomers = customers.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.phone.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredCustomers = customers.filter(c => {
+        const lowercasedTerm = searchTerm.toLowerCase();
+        const nameMatch = c.name ? c.name.toLowerCase().includes(lowercasedTerm) : false;
+        const emailMatch = c.email ? c.email.toLowerCase().includes(lowercasedTerm) : false;
+        const phoneMatch = c.phone ? c.phone.toLowerCase().includes(lowercasedTerm) : false;
+        return nameMatch || emailMatch || phoneMatch;
+    });
 
     return (
         <div className="space-y-6">
