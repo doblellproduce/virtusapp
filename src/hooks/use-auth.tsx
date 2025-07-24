@@ -50,7 +50,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (docSnap.exists()) {
                 const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
                 setUserProfile(profileData);
-                setRole(profileData.role);
+                // Fallback for users that might not have a role assigned
+                setRole(profileData.role || 'Client');
             } else {
                 // This could happen if a user is created in Auth but not in Firestore,
                 // or if the user is a client-side registration.
@@ -106,7 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const handleRegister = async (name: string, email: string, pass: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     
-    // Create user profile in Firestore
+    // Create user profile in Firestore with a default role
     await setDoc(doc(db, "users", userCredential.user.uid), {
       name: name,
       email: email,
