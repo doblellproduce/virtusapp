@@ -96,12 +96,6 @@ export default function HomePage() {
             <Logo />
           </Link>
           <nav className="ml-auto flex items-center gap-2 sm:gap-4">
-            <Button asChild>
-              <a href="#fleet-section">
-                <Car className="mr-2 h-4 w-4" />
-                Ver Flota
-              </a>
-            </Button>
             <Button variant="outline" asChild>
               <Link href="/login">
                 <LogIn className="mr-2 h-4 w-4"/>
@@ -113,15 +107,6 @@ export default function HomePage() {
       </header>
 
       <main className="flex-grow">
-        <section className="container mx-auto py-12 px-4 text-center">
-             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter">
-                Tu Aventura Comienza Aquí
-            </h1>
-            <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-                Explora nuestra flota de vehículos de alta calidad y encuentra el auto perfecto para tu próximo viaje. Confiabilidad y servicio excepcional en cada alquiler.
-            </p>
-        </section>
-
         <section id="fleet-section" className="container mx-auto py-12 px-4">
             <h2 className="text-3xl font-bold text-center mb-8">Nuestra Flota</h2>
             {loading ? (
