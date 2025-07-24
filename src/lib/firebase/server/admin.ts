@@ -14,16 +14,18 @@ const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
+const serviceAccount = {
+  projectId,
+  clientEmail,
+  privateKey,
+};
+
 if (getApps().length === 0) {
   // Ensure all credentials are present before trying to initialize
   if (privateKey && clientEmail && projectId) {
     adminApp = initializeApp({
       // Use the cert() helper to robustly create the credential object
-      credential: cert({
-        projectId: projectId,
-        clientEmail: clientEmail,
-        privateKey: privateKey,
-      }),
+      credential: cert(serviceAccount),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
   } else {

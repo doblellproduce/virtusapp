@@ -49,7 +49,6 @@ export default function LoginForm() {
     try {
       await login(data.email, data.password);
       // The useAuth hook will handle the redirect on successful state change
-      // No need to push here, as it might cause race conditions with the auth state listener.
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";
        // More specific error handling based on the Firebase Auth error codes
