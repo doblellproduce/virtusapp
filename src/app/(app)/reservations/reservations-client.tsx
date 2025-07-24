@@ -373,11 +373,12 @@ export default function ReservationsClient() {
         }
         const lowercasedTerm = searchTerm.toLowerCase();
         return reservations.filter(res => {
-            // Defensive check: ensure 'res' object and its properties are valid before filtering.
+            // Defensive check: ensure 'res' object is valid before proceeding.
             if (!res) {
                 return false;
             }
             
+            // Defensively check properties.
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
                 
@@ -595,6 +596,3 @@ export default function ReservationsClient() {
         </div>
     );
 }
-
-
-
