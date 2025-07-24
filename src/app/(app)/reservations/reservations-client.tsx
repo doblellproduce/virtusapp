@@ -240,7 +240,7 @@ export default function ReservationsClient() {
     }, [open]);
     
     const handleCancelReservation = async (reservation: Reservation | null) => {
-        if (!db || !reservation?.id) return;
+        if (!db || !reservation?.id || !reservation.vehicleId) return;
         const resRef = doc(db, 'reservations', reservation.id);
         await updateDoc(resRef, { status: 'Cancelled' });
 
@@ -352,7 +352,7 @@ export default function ReservationsClient() {
     };
 
 
-    const getStatusVariant = (status: string | undefined): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    const getStatusVariant = (status: string | undefined): "default" | "secondary" | "destructive" | "outline" => {
         switch (status) {
             case 'Active': return 'default';
             case 'Upcoming': return 'secondary';
@@ -373,6 +373,7 @@ export default function ReservationsClient() {
         }
         const lowercasedTerm = searchTerm.toLowerCase();
         return reservations.filter(res => {
+            // Robustness check: Ensure res and its properties are valid before filtering
             if (!res) {
                 return false;
             }
@@ -592,3 +593,5 @@ export default function ReservationsClient() {
         </div>
     );
 }
+
+    
