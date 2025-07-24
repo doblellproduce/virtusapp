@@ -1,13 +1,30 @@
+
 rules_version = '2';
 
+// Rules for Firebase Storage
 service firebase.storage {
+  // Corresponds to the bucket name in your Firebase project
   match /b/{bucket}/o {
-    // Allow staff members to read and write all files.
-    // This rule checks if the user is authenticated and if their user document in Firestore
-    // has a role of Admin, Supervisor, or Secretary.
+    
+    // Function to check if a user is an authorized staff member
+    function isStaff() {
+      // Check if the user is authenticated and if their role in Firestore is one of the allowed roles.
+      return request.auth != null && (
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary']
+      );
+    }
+
+    // Public read access for all files
+    // This allows anyone to view vehicle images, uploaded documents, etc.
     match /{allPaths=**} {
-      allow read, write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
+      allow read: if true;
+    }
+
+    // Write access (uploads, updates, deletes) is restricted to staff members.
+    // This protects your storage from unauthorized uploads.
+    // Applies to all paths.
+    match /{allPaths=**} {
+        allow write: if isStaff();
     }
   }
 }
