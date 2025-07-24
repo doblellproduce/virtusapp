@@ -13,7 +13,6 @@ const nextConfig = {
    webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
-        ...config.resolve.fallback,
         "process": require.resolve("process/browser"),
         "stream": require.resolve("stream-browserify"),
         "zlib": require.resolve("browserify-zlib"),
