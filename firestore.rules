@@ -1,77 +1,63 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isAuth() {
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function getUserRole() {
-      // Assumes user profiles are stored in a 'users' collection
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-
-    function isStaff() {
-      return isAuth() && getUserRole() in ['Admin', 'Supervisor', 'Secretary'];
+    // Helper function to check if the user has a specific role
+    function hasRole(role) {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
     
-    function isAdmin() {
-        return isAuth() && getUserRole() == 'Admin';
+    // Helper function to check if user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Public access for vehicles
+    // Allow public read for vehicles, but only admins/supervisors can write
     match /vehicles/{vehicleId} {
-      allow get, list: if true; // Everyone can see the vehicle fleet
-      allow create, update, delete: if isStaff();
-    }
-    
-    // Reservations can be managed by staff
-    match /reservations/{reservationId} {
-      allow read, write: if isStaff();
+      allow read: if true;
+      allow write: if hasRole('Admin') || hasRole('Supervisor');
     }
 
-    // Customers can be managed by staff
-    match /customers/{customerId} {
-      allow read, write: if isStaff();
-    }
-
-    // Invoices can be managed by staff
-    match /invoices/{invoiceId} {
-        allow read, write: if isStaff();
-    }
-
-    // Expenses can be managed by staff
-    match /expenses/{expenseId} {
-        allow read, write: if isStaff();
-    }
-    
-    // Maintenance Logs can be managed by staff
-    match /maintenanceLogs/{logId} {
-        allow read, write: if isStaff();
-    }
-    
-    // Documents can be managed by staff
-    match /documents/{docId} {
-        allow read, write: if isStaff();
-    }
-
-    // Reviews can be managed by Admins/Supervisors
+    // Allow public read for reviews
     match /reviews/{reviewId} {
-        allow read, write: if isAuth() && getUserRole() in ['Admin', 'Supervisor'];
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if hasRole('Admin') || hasRole('Supervisor');
     }
-
-    // Activity Logs can only be written by authenticated users (via backend), read by Admin/Supervisor
-    match /activityLogs/{logId} {
-        allow create: if isAuth();
-        allow read: if isAuth() && getUserRole() in ['Admin', 'Supervisor'];
-    }
-
-    // User profiles can be read by any staff, but only modified by Admins
+    
+    // Users can read their own profile, Admins can manage all profiles
     match /users/{userId} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
+      allow read: if isOwner(userId) || hasRole('Admin');
+      allow write: if isOwner(userId) || hasRole('Admin');
+    }
+    
+    // Customers can only be managed by staff
+    match /customers/{customerId} {
+        allow read, write, delete: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary');
+    }
+
+    // Reservations can be read by staff or the customer who owns it.
+    // Write access is for staff only.
+    match /reservations/{reservationId} {
+      allow read: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary') || isOwner(resource.data.customerId);
+      allow write: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary');
+    }
+    
+    // General authenticated access for most other business-related collections
+    match /{collection}/{docId} {
+      allow read, write: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary');
+    }
+    
+     match /activityLogs/{logId} {
+      allow read: if hasRole('Admin') || hasRole('Supervisor');
+      allow create: if true; // Allow system/clients to write logs
     }
   }
 }
