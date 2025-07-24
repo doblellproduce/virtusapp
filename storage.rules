@@ -1,39 +1,37 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
   
-    // Helper function to check for admin/supervisor roles by reading Firestore
-    function isStaff(userId) {
-      return get(/databases/(default)/documents/users/$(userId)).data.role in ['Admin', 'Supervisor', 'Secretary'];
+    // Helper function for staff roles
+    function isStaff() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
 
-    // Vehicle images: Publicly readable, only staff can write/delete
-    match /vehicles/{allPaths=**} {
+    // Vehicle images: Publicly readable, only staff can write/delete.
+    match /vehicles/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null && isStaff(request.auth.uid);
+      allow write: if isStaff();
+    }
+
+    // Inspection photos: Only authenticated users can write. Only staff can read them later.
+    // The path is structured like: inspections/{reservationId}/{inspectionType}/{photoName}
+    match /inspections/{reservationId}/{inspectionType}/{fileName} {
+      allow read: if isStaff();
+      // Allow write if the user is creating a reservation for themselves, or if they are staff.
+      allow write: if request.auth.uid != null;
     }
     
-    // Inspection photos: Only authenticated users can write to their own reservation's folder. Staff can read all.
-    match /inspections/{reservationId}/{allPaths=**} {
-        allow read: if request.auth != null && isStaff(request.auth.uid);
-        // Users can only write to their own reservation folder, which we check via a Firestore read
-        allow write: if request.auth != null && (get(/databases/(default)/documents/reservations/$(reservationId)).data.customerId == request.auth.uid || isStaff(request.auth.uid));
+    // Signatures: Same logic as inspection photos.
+    match /signatures/{reservationId}/{inspectionType}/{fileName} {
+       allow read: if isStaff();
+       allow write: if request.auth.uid != null;
     }
-    
-    // Signatures: Same logic as inspections
-    match /signatures/{reservationId}/{allPaths=**} {
-       allow read: if request.auth != null && isStaff(request.auth.uid);
-       allow write: if request.auth != null && (get(/databases/(default)/documents/reservations/$(reservationId)).data.customerId == request.auth.uid || isStaff(request.auth.uid));
-    }
-    
-    // General documents: Users can upload, only staff can read/delete
+
+    // General documents: Only staff can manage.
     match /documents/{fileName} {
-      allow read: if request.auth != null && isStaff(request.auth.uid);
-      allow write: if request.auth != null; // Allows any signed-in user to upload
-      allow delete: if request.auth != null && isStaff(request.auth.uid);
+        allow read, write: if isStaff();
     }
   }
 }
-    

@@ -380,12 +380,18 @@ export default function ReservationsClient() {
             return reservations;
         }
         const lowercasedTerm = searchTerm.toLowerCase();
+        // This is the robust filtering logic.
         return reservations.filter(res => {
-            if (!res) return false;
+            // 1. Ensure the reservation object itself is not null/undefined.
+            if (!res) {
+                return false;
+            }
+            // 2. Check customer name: must exist and be a string.
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
+            // 3. Check reservation ID: must exist and be a string.
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
-            const vehicleMatch = typeof res.vehicle === 'string' && res.vehicle.toLowerCase().includes(lowercasedTerm);
-            return customerNameMatch || idMatch || vehicleMatch;
+            
+            return customerNameMatch || idMatch;
         });
     }, [reservations, searchTerm]);
     
@@ -405,7 +411,7 @@ export default function ReservationsClient() {
                      <div className="relative pt-2">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Search by customer, vehicle, or reservation ID..." 
+                            placeholder="Search by customer or reservation ID..." 
                             className="pl-10"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
