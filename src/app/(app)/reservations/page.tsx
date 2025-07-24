@@ -11,6 +11,7 @@ export default function ReservationsPage() {
             <div className="flex flex-col items-center gap-2 text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
                 <p className="text-lg font-semibold">Loading Reservations...</p>
+                <p className="text-sm text-muted-foreground">Please wait while we fetch the data.</p>
             </div>
         </div>
     }>

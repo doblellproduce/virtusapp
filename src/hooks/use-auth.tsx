@@ -69,7 +69,8 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
                   setUserProfile(profileData);
                   setRole(profileData.role || 'Client');
                 } else {
-                  // This is a client user who does not have a doc in the 'users' collection
+                  // This can happen for new client-side sign-ups before the doc is created
+                  // The API route now handles creating the doc, so we just wait for the snapshot.
                   setUserProfile(null); 
                   setRole('Client');
                 }
