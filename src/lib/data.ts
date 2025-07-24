@@ -1,5 +1,5 @@
 
-import type { Reservation, Vehicle, UserProfile, MaintenanceLog, Expense, Review, Customer } from '@/lib/types';
+import type { Reservation, Vehicle, UserProfile, MaintenanceLog, Expense, Review, Customer, Invoice } from '@/lib/types';
 
 
 // --- VEHICLES ---
