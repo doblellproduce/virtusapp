@@ -3,15 +3,35 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Bar, BarChart, XAxis, YAxis, Tooltip } from 'recharts';
-import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { ArrowRight, Car, User, DollarSign, Wrench, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import type { Reservation } from '@/lib/types';
+
+// Function to format currency, moved here to be self-contained
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value);
+};
+
+
+// Dynamically import the chart component to prevent SSR issues with recharts
+const RevenueChart = dynamic(() => import('@/components/revenue-chart'), {
+    ssr: false,
+    loading: () => (
+        <div className="h-[250px] w-full flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    ),
+});
 
 
 type Invoice = {
@@ -24,12 +44,12 @@ type Invoice = {
   paymentMethod: 'Credit Card' | 'Bank Transfer' | 'Cash' | 'N/A';
 };
 
-type ChartData = {
+export type ChartData = {
     month: string;
     revenue: number;
 }
 
-type InitialData = {
+export type InitialData = {
    stats: {
         totalRevenue: number;
         activeRentals: number;
@@ -40,23 +60,6 @@ type InitialData = {
     recentInvoices: Invoice[];
     chartData: ChartData[];
 }
-
-// Function to format currency, moved to module scope
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-};
-
-const chartConfig = {
-  revenue: {
-    label: "Revenue",
-    color: "hsl(var(--primary))",
-  },
-};
 
 function StatCard({ title, value, icon: Icon, description }: { title: string, value: string, icon: React.ElementType, description: string }) {
     return (
@@ -122,42 +125,6 @@ function RecentReservations({ reservations }: { reservations: Reservation[] }) {
             </CardFooter>
         </Card>
     );
-}
-
-function RevenueChart({ data }: { data: ChartData[] }) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Revenue Overview</CardTitle>
-                <CardDescription>Monthly revenue for the last 7 months.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                    <BarChart data={data} accessibilityLayer>
-                        <XAxis
-                            dataKey="month"
-                            stroke="#888888"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                        />
-                        <YAxis
-                            stroke="#888888"
-                            fontSize={12}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(value) => `$${value / 1000}k`}
-                        />
-                        <Tooltip 
-                            cursor={{fill: 'hsl(var(--accent))', radius: 4}} 
-                            content={<ChartTooltipContent formatter={(value) => formatCurrency(value as number)} />}
-                        />
-                        <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ChartContainer>
-            </CardContent>
-        </Card>
-    )
 }
 
 function RecentInvoices({ invoices }: { invoices: Invoice[] }) {
