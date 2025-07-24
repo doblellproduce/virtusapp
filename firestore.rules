@@ -3,26 +3,71 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    // Function to check if a user is an authenticated staff member
+    function isStaff() {
+      // Check if the user is authenticated and if their role in Firestore is one of the allowed roles.
+      return request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary']
+      );
+    }
     
-    // Allow public read access to vehicles for the public-facing site
+    // Function to check if a user is the owner of the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Public collections - readable by anyone
     match /vehicles/{vehicleId} {
       allow read: if true;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
+      allow write: if isStaff(); // Only staff can create, update, or delete vehicle listings
+    }
+    
+    match /reviews/{reviewId} {
+      allow read: if true; // Allow anyone to read approved reviews
+      allow create: if request.auth != null; // Allow any authenticated user to create a review
+      allow update, delete: if isStaff(); // Only staff can moderate (approve, delete) reviews
     }
 
-    // Allow logged-in users to manage their own data
+    // Staff-only collections
     match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+      allow read, write: if isStaff();
+    }
+    
+    match /customers/{customerId} {
+      allow read, write: if isStaff();
     }
 
-    // Secure other collections to only be writable by authenticated staff
-    // and readable by relevant parties.
-    match /{collection}/{docId} {
-      // Default deny all reads and writes
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
+    match /reservations/{reservationId} {
+      allow read: if isStaff() || isOwner(resource.data.customerId);
+      allow create: if isStaff() || isOwner(request.resource.data.customerId);
+      allow update: if isStaff();
+      allow delete: if isStaff();
+    }
+    
+    match /invoices/{invoiceId} {
+      allow read, write: if isStaff();
+    }
+
+    match /expenses/{expenseId} {
+      allow read, write: if isStaff();
+    }
+
+    match /maintenanceLogs/{logId} {
+      allow read, write: if isStaff();
+    }
+    
+    match /contracts/{contractId} {
+      allow read, write: if isStaff();
+    }
+    
+    match /activityLogs/{logId} {
+      allow read: if isStaff();
+      allow create: if true; // Allow system/clients to log activities
+    }
+    
+    match /documents/{docId} {
+        allow read, write: if isStaff();
     }
   }
 }
