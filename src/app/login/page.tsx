@@ -17,12 +17,6 @@ const Logo = () => (
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4 relative">
-        <Button asChild variant="outline" className="absolute top-4 left-4">
-            <Link href="/">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Volver al Inicio
-            </Link>
-        </Button>
       <div className="w-full max-w-md">
         <Card className="shadow-2xl">
           <CardHeader className="text-center space-y-4">
@@ -38,6 +32,11 @@ export default function LoginPage() {
         </Card>
          <footer className="mt-8 text-center text-xs text-muted-foreground">
             <p>© {new Date().getFullYear()} Virtus Car Rental S.R.L. | Todos los derechos reservados.</p>
+            <p className="mt-2">
+                <Button variant="link" asChild className="p-0 h-auto">
+                    <Link href="/">Volver a la página principal</Link>
+                </Button>
+            </p>
         </footer>
       </div>
     </main>
