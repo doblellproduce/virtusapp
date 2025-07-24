@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Paths that do not require authentication
-const publicPaths = ['/login', '/contrato'];
+const publicPaths = ['/login', '/contrato', '/home'];
 // API paths that do not require authentication
 const publicApiPaths = ['/api/auth', '/api/smart-reply']; 
 // Protected admin area for staff
