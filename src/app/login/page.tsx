@@ -17,6 +17,12 @@ const Logo = () => (
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4 relative">
+       <Button asChild variant="ghost" className="absolute top-4 left-4">
+            <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver a la página principal
+            </Link>
+        </Button>
       <div className="w-full max-w-md">
         <Card className="shadow-2xl">
           <CardHeader className="text-center space-y-4">
