@@ -1,7 +1,7 @@
 
 'use server';
 
-import { subMonths, format, startOfMonth, getMonth, getYear } from 'date-fns';
+import { subMonths, format, startOfMonth } from 'date-fns';
 import { adminDB } from '@/lib/firebase/admin';
 import type { Reservation, Vehicle, Invoice } from '@/lib/types';
 
@@ -30,17 +30,13 @@ export async function getDashboardData() {
     
     // --- CHART DATA AGGREGATION ---
     const monthlyRevenue: { [key: string]: number } = {};
-    const monthLabels: string[] = [];
+    const chartData: { month: string; revenue: number }[] = [];
     const now = new Date();
 
     // Initialize the last 7 months
     for (let i = 6; i >= 0; i--) {
         const monthDate = subMonths(now, i);
         const monthKey = format(monthDate, 'yyyy-MM');
-        const monthLabel = format(monthDate, 'MMM');
-        if(!monthLabels.includes(monthLabel)) {
-           monthLabels.push(monthLabel);
-        }
         monthlyRevenue[monthKey] = 0;
     }
     
@@ -57,19 +53,15 @@ export async function getDashboardData() {
         }
     });
 
-    const chartData = monthLabels.map(label => {
-      const year = getYear(now);
-      const monthIndex = new Date(Date.parse(label +" 1, 2012")).getMonth();
-      const monthIsPast = monthIndex > getMonth(now);
-      const correctYear = monthIsPast ? year - 1 : year;
-      const key = `${correctYear}-${String(monthIndex + 1).padStart(2, '0')}`;
-      
-      return {
-          month: label,
-          revenue: monthlyRevenue[key] || 0,
-      };
-    });
-
+    // Generate final chart data structure, ordered from oldest to newest
+    for (let i = 6; i >= 0; i--) {
+        const monthDate = subMonths(now, i);
+        const monthKey = format(monthDate, 'yyyy-MM');
+        chartData.push({
+            month: format(monthDate, 'MMM'),
+            revenue: monthlyRevenue[monthKey] || 0,
+        });
+    }
 
     // --- FINAL DATA STRUCTURE ---
     return {
