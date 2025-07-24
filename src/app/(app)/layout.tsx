@@ -82,13 +82,13 @@ export default function AdminLayout({
     if (!loading && !user) {
       router.replace('/login');
     }
+     // If the user is authenticated but is a client, redirect them away from admin pages
+    if (!loading && user && role === 'Client') {
+        router.replace('/client-dashboard');
+    }
   }, [user, loading, role, router]);
   
-  if (role === 'Client') {
-    return <main>{children}</main>;
-  }
-
-  if (loading || !user) {
+  if (loading || !user || role === 'Client' || !role) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
