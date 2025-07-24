@@ -83,6 +83,10 @@ export default function AdminLayout({
       router.replace('/login');
     }
   }, [user, loading, role, router]);
+  
+  if (role === 'Client') {
+    return <main>{children}</main>;
+  }
 
   if (loading || !user) {
     return (
