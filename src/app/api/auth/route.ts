@@ -24,14 +24,18 @@ export async function POST(request: NextRequest) {
     // This prevents the "User undefined logged in" error.
     const userNameForLog = userProfile?.name || decodedToken.email || 'Unknown User';
     
-    await adminDB.collection('activityLogs').add({
-        timestamp: new Date().toISOString(),
-        user: userNameForLog,
-        action: 'Login',
-        entityType: 'Auth',
-        entityId: uid,
-        details: `User ${userNameForLog} logged in.`
-    });
+    // Check if the log is for a login or a new registration to avoid double logging
+    const isNewUser = decodedToken.auth_time === decodedToken.iat;
+    if (!isNewUser) {
+        await adminDB.collection('activityLogs').add({
+            timestamp: new Date().toISOString(),
+            user: userNameForLog,
+            action: 'Login',
+            entityType: 'Auth',
+            entityId: uid,
+            details: `User ${userNameForLog} logged in.`
+        });
+    }
     
     const response = NextResponse.json({ success: true, message: 'Authentication successful.' });
 
