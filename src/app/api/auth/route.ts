@@ -13,20 +13,28 @@ export async function POST(request: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
     
-    const userDocSnap = await adminDB.collection('users').doc(uid).get();
+    const userDocRef = adminDB.collection('users').doc(uid);
+    const userDocSnap = await userDocRef.get();
     
-    const userProfile = userDocSnap.exists ? userDocSnap.data() : null;
+    let userProfile = null;
+    if (userDocSnap.exists()) {
+        userProfile = userDocSnap.data();
+    } else {
+        // If the user document doesn't exist, it might be a new client registration.
+        // We can create a default profile here if needed, or just assign a client role.
+        // For this app, non-staff users are 'Client' by default.
+        // No doc creation needed for clients.
+    }
+    
+    const userRole = userProfile?.role || 'Client';
 
-    // Set custom claim for role-based access in middleware
-    await adminAuth.setCustomUserClaims(uid, { role: userProfile?.role || 'Client' });
+    // Set custom claim for role-based access in middleware or server components
+    await adminAuth.setCustomUserClaims(uid, { role: userRole });
     
-    // Log activity only if profile exists, otherwise use email as a fallback.
-    // This prevents the "User undefined logged in" error.
     const userNameForLog = userProfile?.name || decodedToken.email || 'Unknown User';
     
-    // Check if the log is for a login or a new registration to avoid double logging
     const isNewUser = decodedToken.auth_time === decodedToken.iat;
-    if (!isNewUser && userProfile) { // Only log if it's an existing user with a profile
+    if (!isNewUser && userProfile) { 
         await adminDB.collection('activityLogs').add({
             timestamp: new Date().toISOString(),
             user: userNameForLog,
@@ -39,11 +47,13 @@ export async function POST(request: NextRequest) {
     
     const response = NextResponse.json({ success: true, message: 'Authentication successful.' });
 
+    // Set the session cookie
     response.cookies.set('firebaseIdToken', idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24, // 24 hours
       path: '/',
+      sameSite: 'lax',
     });
 
     return response;
@@ -62,7 +72,7 @@ export async function POST(request: NextRequest) {
             errorMessage = error.message || "An unexpected error occurred during session creation.";
             break;
        }
-    return NextResponse.json({ error: errorMessage }, { status: 401 });
+    return NextResponse.json({ error: errorMessage, code: error.code }, { status: 401 });
   }
 }
 

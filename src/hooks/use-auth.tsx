@@ -33,6 +33,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const postAuthAction = async (user: User) => {
+    const idToken = await user.getIdToken(true); // Force refresh the token
+    const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Server-side session creation failed.' }));
+        throw new Error(errorData.error);
+    }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -45,6 +59,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       if (authUser) {
         setUser(authUser);
+        // Create server-side session cookie
+        await postAuthAction(authUser);
+
         const userDocRef = doc(db, 'users', authUser.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (userDocSnap) => {
             if (userDocSnap.exists()) {
@@ -58,13 +75,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   router.push('/client-dashboard');
               }
             } else {
-              // This is a fallback for client users who don't have a doc in 'users' collection
               setUserProfile(null);
               setRole('Client');
               router.push('/client-dashboard');
             }
             setLoading(false);
-        }, () => setLoading(false));
+        }, (error) => {
+            console.error("Firestore snapshot error:", error);
+            setLoading(false)
+        });
          return () => unsubscribeSnapshot();
       } else {
         setUser(null);
@@ -77,23 +96,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [router]);
 
-  const postAuthAction = async (userCredential: any) => {
-    const idToken = await userCredential.user.getIdToken();
-    const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Server-side session creation failed.' }));
-        throw new Error(errorData.error);
-    }
-  }
-
   const handleLogin = async (email: string, pass: string) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-    await postAuthAction(userCredential);
+    // Just sign in. The onAuthStateChanged listener will handle the rest.
+    await signInWithEmailAndPassword(auth, email, pass);
   };
   
   const handleLogout = async () => {
