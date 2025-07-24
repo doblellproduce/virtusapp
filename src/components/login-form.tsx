@@ -51,6 +51,7 @@ export default function LoginForm() {
       await login(data.email, data.password);
       const redirectedFrom = searchParams.get('redirectedFrom');
       router.push(redirectedFrom || '/dashboard');
+      router.refresh(); // Force a refresh to ensure layout and middleware re-evaluate
 
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";

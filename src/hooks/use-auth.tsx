@@ -15,7 +15,7 @@ import { auth, db, storage } from '@/lib/firebase/client';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from "firebase/storage";
 import type { Auth } from 'firebase/auth';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -53,7 +53,6 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
@@ -70,18 +69,26 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
                   setUserProfile(profileData);
                   setRole(profileData.role || 'Client');
                 } else {
-                  setUserProfile(null);
+                  // This is a client user who does not have a doc in the 'users' collection
+                  setUserProfile(null); 
                   setRole('Client');
                 }
                 setLoading(false);
             }, (error) => {
                 console.error("Firestore snapshot error:", error);
+                setUser(null);
+                setUserProfile(null);
+                setRole(null);
                 setLoading(false);
             });
              return () => unsubscribeSnapshot();
         } catch (error) {
             console.error("Auth action failed, logging out:", error);
             await signOut(auth);
+            setUser(null);
+            setUserProfile(null);
+            setRole(null);
+            setLoading(false);
         }
       } else {
         setUser(null);
