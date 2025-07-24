@@ -23,9 +23,8 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
     }
     
-    // CUSTOMERS: Staff manage customer profiles.
+    // CUSTOMERS: Only staff can manage and create customers now.
     match /customers/{customerId} {
-      // Staff can perform all operations on customer documents.
       allow read, create, update, delete: if isStaff();
     }
 
@@ -37,35 +36,33 @@ service cloud.firestore {
 
     // RESERVATIONS: Staff manage all.
     match /reservations/{reservationId} {
-      // All operations are restricted to staff members.
       allow read, create, update, delete: if isStaff();
     }
     
-    // INVOICES & EXPENSES: Full access for staff.
+    // INVOICES, EXPENSES, ETC: Full access for staff.
     match /invoices/{invoiceId} {
        allow read, create, update, delete: if isStaff();
     }
     match /expenses/{expenseId} {
        allow read, create, update, delete: if isStaff();
     }
-
-    // REVIEWS: Public read. Management for staff.
     match /reviews/{reviewId} {
       allow read: if true;
-      // Staff can create reviews (e.g., on behalf of a customer).
+      // Staff can create reviews on behalf of customers
       allow create, update, delete: if isStaff();
     }
-
-    // MAINTENANCE, CONTRACTS, ACTIVITY LOGS: Staff management.
     match /maintenanceLogs/{logId} {
        allow read, create, update, delete: if isStaff();
     }
     match /contracts/{contractId} {
         allow read, create, update, delete: if isStaff();
     }
+    match /documents/{documentId} {
+        allow read, create, update, delete: if isStaff();
+    }
     match /activityLogs/{logId} {
-      // Staff can read and write to the activity log.
-      allow read, create: if isStaff();
+      // Allow any authenticated staff member to write logs.
+      allow create, read: if isStaff();
     }
   }
 }
