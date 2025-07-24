@@ -59,32 +59,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       if (authUser) {
         setUser(authUser);
-        // Create server-side session cookie
-        await postAuthAction(authUser);
+        try {
+            await postAuthAction(authUser);
 
-        const userDocRef = doc(db, 'users', authUser.uid);
-        const unsubscribeSnapshot = onSnapshot(userDocRef, (userDocSnap) => {
-            if (userDocSnap.exists()) {
-              const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
-              setUserProfile(profileData);
-              const newRole = profileData.role || 'Client';
-              setRole(newRole);
-               if (newRole !== 'Client') {
-                  router.push('/dashboard');
-              } else {
+            const userDocRef = doc(db, 'users', authUser.uid);
+            const unsubscribeSnapshot = onSnapshot(userDocRef, (userDocSnap) => {
+                if (userDocSnap.exists()) {
+                  const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
+                  setUserProfile(profileData);
+                  const newRole = profileData.role || 'Client';
+                  setRole(newRole);
+                   if (newRole !== 'Client') {
+                      router.push('/dashboard');
+                  } else {
+                      router.push('/client-dashboard');
+                  }
+                } else {
+                  setUserProfile(null);
+                  setRole('Client');
                   router.push('/client-dashboard');
-              }
-            } else {
-              setUserProfile(null);
-              setRole('Client');
-              router.push('/client-dashboard');
-            }
-            setLoading(false);
-        }, (error) => {
-            console.error("Firestore snapshot error:", error);
-            setLoading(false)
-        });
-         return () => unsubscribeSnapshot();
+                }
+                setLoading(false);
+            }, (error) => {
+                console.error("Firestore snapshot error:", error);
+                setLoading(false)
+            });
+             return () => unsubscribeSnapshot();
+        } catch (error) {
+            console.error("Auth action failed, logging out:", error);
+            await signOut(auth); // Log out on session creation failure
+        }
       } else {
         setUser(null);
         setUserProfile(null);
