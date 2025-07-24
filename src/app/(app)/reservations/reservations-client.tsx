@@ -372,20 +372,10 @@ export default function ReservationsClient() {
         }
         const lowercasedTerm = searchTerm.toLowerCase();
         return reservations.filter(res => {
-            // Defensive check: ensure 'res' object exists before trying to access its properties.
-            if (!res) {
-                return false;
-            }
+            if (!res) return false;
             
-            // Safe access to customerName: check if it's a string before calling toLowerCase.
-            const customerNameMatch = typeof res.customerName === 'string' 
-                ? res.customerName.toLowerCase().includes(lowercasedTerm) 
-                : false;
-                
-            // Safe access to id: check if it's a string before calling toLowerCase.
-            const idMatch = typeof res.id === 'string'
-                ? res.id.toLowerCase().includes(lowercasedTerm)
-                : false;
+            const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
+            const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
                 
             return customerNameMatch || idMatch;
         });
