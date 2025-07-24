@@ -362,12 +362,22 @@ export default function ReservationsClient() {
         return '';
     }
     
-    const filteredReservations = reservations.filter(res => {
+    const filteredReservations = React.useMemo(() => {
+        if (!searchTerm) {
+            return reservations;
+        }
         const lowercasedTerm = searchTerm.toLowerCase();
-        const customerNameMatch = res.customerName ? res.customerName.toLowerCase().includes(lowercasedTerm) : false;
-        const idMatch = res.id ? res.id.toLowerCase().includes(lowercasedTerm) : false;
-        return customerNameMatch || idMatch;
-    });
+        return reservations.filter(res => {
+            // Safely check for both customerName and id before calling toLowerCase
+            const customerNameMatch = res.customerName && typeof res.customerName === 'string' 
+                ? res.customerName.toLowerCase().includes(lowercasedTerm) 
+                : false;
+            const idMatch = res.id && typeof res.id === 'string'
+                ? res.id.toLowerCase().includes(lowercasedTerm)
+                : false;
+            return customerNameMatch || idMatch;
+        });
+    }, [reservations, searchTerm]);
     
     return (
         <div className="space-y-6">
@@ -583,3 +593,5 @@ export default function ReservationsClient() {
     
 
     
+
+
