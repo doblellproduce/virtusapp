@@ -597,6 +597,4 @@ export default function ReservationsClient() {
     );
 }
 
-
-
     
