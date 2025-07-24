@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
-function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+function VehicleCard({ vehicle, priority }: { vehicle: Vehicle, priority: boolean }) {
   return (
     <Card className="flex flex-col overflow-hidden">
       <div className="relative aspect-video">
@@ -23,6 +23,8 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           fill
           className="object-cover"
           data-ai-hint={vehicle.dataAiHint}
+          priority={priority}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
       </div>
       <CardHeader>
@@ -123,8 +125,8 @@ export default function HomePage() {
                              </div>
                         ) : (
                             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {vehicles.map(vehicle => (
-                                    <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                                {vehicles.map((vehicle, index) => (
+                                    <VehicleCard key={vehicle.id} vehicle={vehicle} priority={index === 0} />
                                 ))}
                             </div>
                         )}
