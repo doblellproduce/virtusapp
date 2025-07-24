@@ -58,6 +58,7 @@ export default function HomePage() {
   const { db, user } = useAuth();
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!db) return;
@@ -67,8 +68,10 @@ export default function HomePage() {
         const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
         setVehicles(vehiclesData);
         setLoading(false);
-    }, (error) => {
-        console.error("Error fetching vehicles:", error);
+        setError(null);
+    }, (err) => {
+        console.error("Error fetching vehicles:", err);
+        setError("No se pudo cargar la flota. Por favor, intente de nuevo más tarde.");
         setLoading(false);
     });
 
@@ -117,6 +120,10 @@ export default function HomePage() {
             {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                </div>
+            ) : error ? (
+                 <div className="text-center text-destructive bg-destructive/10 p-4 rounded-md">
+                    {error}
                 </div>
             ) : (
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
