@@ -3,6 +3,8 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import LoginForm from '@/components/login-form';
+import RegisterForm from '@/components/register-form';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const Logo = () => (
     <div className="flex flex-col items-center justify-center p-2 text-center">
@@ -12,9 +14,6 @@ const Logo = () => (
 );
 
 export default function LoginPage() {
-  // This page is now simplified. Its only job is to display the login form.
-  // The root page layout (or a wrapper component) is responsible for handling
-  // redirection if a user is already authenticated.
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
@@ -23,15 +22,35 @@ export default function LoginPage() {
             <Logo />
           </CardHeader>
           <CardContent className="space-y-4">
-               <CardHeader className="p-2 pb-4">
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Acceso Personal</TabsTrigger>
+                <TabsTrigger value="register">Registro Cliente</TabsTrigger>
+              </TabsList>
+              <TabsContent value="login">
+                 <CardHeader className="p-2 pb-4">
                   <CardTitle className="text-2xl font-bold tracking-tight text-center">Acceso de Personal</CardTitle>
                   <CardDescription className="text-center">
                       Inicia sesión para administrar el sistema.
                   </CardDescription>
-              </CardHeader>
-              <LoginForm />
+                </CardHeader>
+                <LoginForm />
+              </TabsContent>
+              <TabsContent value="register">
+                 <CardHeader className="p-2 pb-4">
+                    <CardTitle className="text-2xl font-bold tracking-tight text-center">Crear una Cuenta</CardTitle>
+                    <CardDescription className="text-center">
+                        Regístrate para reservar vehículos.
+                    </CardDescription>
+                </CardHeader>
+                <RegisterForm />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
+         <footer className="mt-8 text-center text-xs text-muted-foreground">
+            <p>© {new Date().getFullYear()} Virtus Car Rental S.R.L. | Todos los derechos reservados.</p>
+        </footer>
       </div>
     </main>
   );
