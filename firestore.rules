@@ -1,44 +1,80 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
+  
     function isAuth() {
       return request.auth != null;
     }
     
-    function isRole(role) {
-      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
-    }
-    
     function isAdmin() {
-      return isRole('Admin');
+      return isAuth() && request.auth.token.role == 'Admin';
     }
     
     function isSupervisor() {
-      return isRole('Supervisor');
-    }
-    
-    function isSecretary() {
-      return isRole('Secretary');
+      return isAuth() && (isAdmin() || request.auth.token.role == 'Supervisor');
     }
     
     function isStaff() {
-      return isAdmin() || isSupervisor() || isSecretary();
+      return isAuth() && (isSupervisor() || request.auth.token.role == 'Secretary');
     }
 
-    // VEHICLES: Public can read, staff can write
+    // VEHICLES: Public read, restricted write
     match /vehicles/{vehicleId} {
       allow get: if true; // Anyone can view a single vehicle
       allow list: if true; // Anyone can list all vehicles
-      allow create, update, delete: if isStaff();
+      allow create, update, delete: if isSupervisor();
     }
     
     // All other collections are protected
-    match /{collection}/{docId} {
-      allow read, write: if isStaff();
+    match /users/{userId} {
+      allow read, write: if isAuth() && request.auth.uid == userId;
+      allow list, create, delete: if isAdmin();
+    }
+    
+    match /customers/{customerId} {
+      allow read, list, create, update, delete: if isStaff();
+    }
+    
+    match /reservations/{reservationId} {
+        allow read, list, create, update: if isStaff();
+        // Allow clients to read/update their own reservations, but not delete
+        allow read, update: if isAuth() && resource.data.customerId == request.auth.uid;
+        // Staff can cancel (update status), but not delete entirely for records.
+        allow delete: if isAdmin();
+    }
+    
+    match /invoices/{invoiceId} {
+      allow read, list, create, update, delete: if isStaff();
+    }
+    
+    match /expenses/{expenseId} {
+      allow read, list, create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+    
+    match /maintenanceLogs/{logId} {
+       allow read, list, create: if isStaff();
+       allow delete: if isAdmin();
+    }
+    
+    match /reviews/{reviewId} {
+        allow create: if isAuth(); // Allow any authenticated user to create
+        allow read, list, update, delete: if isSupervisor(); // Only supervisors/admins can manage
+    }
+
+    match /activityLogs/{logId} {
+      allow read, list: if isSupervisor();
+      // Only the system (via server-side functions) can create logs.
+      allow create, update, delete: if false; 
+    }
+    
+    match /contracts/{contractId} {
+        allow read, list, create, update, delete: if isStaff();
+    }
+    
+    match /documents/{documentId} {
+        allow read, list, create, update, delete: if isStaff();
     }
   }
 }
