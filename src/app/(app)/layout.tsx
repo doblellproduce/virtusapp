@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -30,6 +31,7 @@ import {
   History,
   BarChartHorizontal,
   UserCog,
+  Star,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -59,6 +61,7 @@ const menuItems = [
   { href: '/invoices', label: 'Invoices', icon: CreditCard, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/expenses', label: 'Expenses', icon: Wrench, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/maintenance', label: 'Maintenance', icon: Wrench, roles: ['Admin', 'Supervisor', 'Secretary'] },
+  { href: '/reviews', label: 'Reviews', icon: Star, roles: ['Admin', 'Supervisor'] },
   { href: '/calendar', label: 'Booking Calendar', icon: Calendar, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/smart-reply', label: 'Smart Reply', icon: Sparkles, roles: ['Admin', 'Supervisor', 'Secretary'] },
   { href: '/reports', label: 'Reports', icon: BarChartHorizontal, roles: ['Admin', 'Supervisor'] },
@@ -79,9 +82,13 @@ export default function AdminLayout({
     if (!loading && !user) {
       router.replace('/login');
     }
-  }, [user, loading, router]);
+    // Redirect clients away from admin area
+    if (!loading && role === 'Client') {
+      router.replace('/client-dashboard');
+    }
+  }, [user, loading, role, router]);
 
-  if (loading || !user) {
+  if (loading || !user || role === 'Client') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

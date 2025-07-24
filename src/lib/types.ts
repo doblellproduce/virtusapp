@@ -1,5 +1,6 @@
 
-export type UserRole = 'Admin' | 'Supervisor' | 'Secretary';
+
+export type UserRole = 'Admin' | 'Supervisor' | 'Secretary' | 'Client';
 
 export type UserProfile = {
     id: string; // Corresponds to Firebase Auth UID
@@ -38,6 +39,9 @@ export type Vehicle = {
         engine: string;
     };
     lastServiceDate: string;
+    // Add reviews field
+    reviews?: Review[];
+    averageRating?: number;
 };
 
 export type VehicleInspection = {
@@ -102,8 +106,19 @@ export type ActivityLog = {
     id: string;
     timestamp: string;
     user: string;
-    action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel';
-    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer';
+    action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel' | 'Review';
+    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer' | 'Review';
     entityId: string;
     details: string;
+};
+
+export type Review = {
+    id: string;
+    vehicleId: string;
+    customerId: string;
+    customerName: string;
+    rating: number;
+    comment: string;
+    timestamp: string; // ISO string
+    status: 'Pending' | 'Approved' | 'Rejected';
 };

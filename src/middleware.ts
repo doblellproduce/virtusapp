@@ -1,10 +1,22 @@
 
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminAuth } from '@/lib/firebase/server/admin';
 
+// Paths that do not require authentication
 const publicPaths = ['/login', '/contrato'];
-const publicApiPaths = ['/api/auth']; // API for login/logout is public
+// API paths that do not require authentication
+const publicApiPaths = ['/api/auth'];
+// Paths exclusively for authenticated clients
+const clientPaths = ['/client-dashboard'];
+// Paths for admin area (all roles except Client)
+const adminPaths = [
+    '/dashboard', '/reservations', '/customers', '/vehicles', 
+    '/documents', '/invoices', '/expenses', '/maintenance', '/calendar',
+    '/smart-reply', '/reports', '/logs', '/users', '/reviews'
+];
+
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -13,36 +25,56 @@ export async function middleware(request: NextRequest) {
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path)) || pathname === '/';
   const isPublicApiPath = publicApiPaths.some(path => pathname.startsWith(path));
 
-  // Allow access to public paths and public APIs
+  // 1. Allow access to public paths and public APIs
   if (isPublicPath || isPublicApiPath) {
-    // But if they are logged in and trying to access /login, redirect to dashboard
-    if (token && pathname.startsWith('/login')) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
     return NextResponse.next();
   }
 
-  // For all other protected paths, a token is required
+  // 2. If no token, redirect to login for any protected route
   if (!token) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectedFrom', pathname);
     return NextResponse.redirect(loginUrl);
   }
   
-  // Verify the token to ensure it's still valid
+  // 3. Verify token and user role
   try {
-    await adminAuth.verifyIdToken(token);
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const role = decodedToken.role || 'Client'; // Default to Client if role isn't set in custom claims
+
+    // User is a Client
+    if (role === 'Client') {
+        // Allow access to client-specific paths
+        if (clientPaths.some(p => pathname.startsWith(p))) {
+            return NextResponse.next();
+        }
+        // If a client tries to access an admin path, redirect them to their dashboard
+        if (adminPaths.some(p => pathname.startsWith(p))) {
+             return NextResponse.redirect(new URL('/client-dashboard', request.url));
+        }
+    } 
+    // User is an Admin/Supervisor/Secretary
+    else {
+        // Allow access to admin paths
+        if (adminPaths.some(p => pathname.startsWith(p))) {
+            return NextResponse.next();
+        }
+        // If an admin tries to access a client path, redirect them to their dashboard
+        if (clientPaths.some(p => pathname.startsWith(p))) {
+            return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+    }
+    
+    // Fallback for any other authenticated route, just let it pass
+    return NextResponse.next();
+
   } catch (error) {
-    // If token verification fails, redirect to login and clear the invalid cookie
     console.error("Token verification failed in middleware:", error);
     const loginUrl = new URL('/login', request.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete('firebaseIdToken');
     return response;
   }
-
-  // If the user has a valid token, allow the request to proceed
-  return NextResponse.next();
 }
 
 // Matcher to apply the middleware to all paths except for Next.js internal assets

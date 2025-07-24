@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useContext, createContext, useCallback } from 'react';
@@ -7,15 +8,15 @@ import {
     sendPasswordResetEmail,
     signOut,
     signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
     type User,
 } from 'firebase/auth';
-import { doc, onSnapshot, addDoc, collection } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, setDoc } from 'firebase/firestore';
 import type { UserProfile, UserRole, ActivityLog } from '@/lib/types';
-import { auth, db, storage } from '@/lib/firebase/admin'; // Use client-safe imports
+import { auth, db, storage } from '@/lib/firebase/admin'; 
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from "firebase/storage";
 import type { Auth } from 'firebase/auth';
-
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +27,7 @@ interface AuthContextType {
   storage: FirebaseStorage;
   auth: Auth;
   login: (email: string, pass: string) => Promise<void>;
+  register: (name: string, email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logActivity: (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => Promise<void>;
@@ -73,11 +75,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
-
-  const handleLogin = async (email: string, pass: string) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+  const postAuthAction = async (userCredential: any) => {
     const idToken = await userCredential.user.getIdToken();
-    
     const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,14 +87,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const result = await response.json();
         throw new Error(result.error || "Server-side session creation failed.");
     }
+  }
+
+  const handleLogin = async (email: string, pass: string) => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    await postAuthAction(userCredential);
+  };
+
+  const handleRegister = async (name: string, email: string, pass: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    
+    const newUserProfile: Omit<UserProfile, 'id'> = {
+        name,
+        email,
+        role: 'Client', // All self-registrations are clients
+        photoURL: '',
+    };
+    await setDoc(doc(db, "users", userCredential.user.uid), newUserProfile);
+    
+    await postAuthAction(userCredential);
   };
 
   const handleLogout = async () => {
-    await logActivity('Logout', 'Auth', user?.uid || 'unknown', `User ${userProfile?.name} logged out.`);
+    if (user && userProfile) {
+        await logActivity('Logout', 'Auth', user.uid, `User ${userProfile.name} logged out.`);
+    }
     await signOut(auth);
-    
     await fetch('/api/auth', { method: 'DELETE' });
-
     setUser(null);
     setUserProfile(null);
     setRole(null);
@@ -127,6 +145,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     userProfile,
     role,
     login: handleLogin,
+    register: handleRegister,
     logout: handleLogout,
     sendPasswordReset: handlePasswordReset,
     logActivity,

@@ -1,4 +1,5 @@
 
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
 
@@ -10,17 +11,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ID token is required' }, { status: 400 });
     }
     
-    // Verify the token on the admin side to get claims and proceed securely
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
     
-    // Log the activity
     const userDocSnap = await adminDB.collection('users').doc(uid).get();
     if (!userDocSnap.exists) {
         return NextResponse.json({ error: 'User profile not found in database.' }, { status: 404 });
     }
     const userProfile = userDocSnap.data();
 
+    // Set custom claim for role-based access in middleware
+    await adminAuth.setCustomUserClaims(uid, { role: userProfile?.role });
+    
     await adminDB.collection('activityLogs').add({
         timestamp: new Date().toISOString(),
         user: userProfile?.name || userProfile?.email,
@@ -32,7 +34,6 @@ export async function POST(request: NextRequest) {
     
     const response = NextResponse.json({ success: true, message: 'Authentication successful.' });
 
-    // Set the token in a secure, httpOnly cookie on the response
     response.cookies.set('firebaseIdToken', idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -45,7 +46,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error handling auth request:', error);
      let errorMessage = "An unexpected error occurred.";
-       // Robust handling of common Firebase Auth errors
        switch (error.code) {
          case 'auth/id-token-expired':
             errorMessage = 'Your session has expired. Please log in again.';
@@ -66,7 +66,6 @@ export async function DELETE(request: NextRequest) {
   try {
     const response = NextResponse.json({ success: true, message: 'Logged out successfully.' });
     
-    // Clear the authentication cookie upon logout
     response.cookies.delete('firebaseIdToken');
     
     return response;
