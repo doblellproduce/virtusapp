@@ -352,7 +352,7 @@ export default function ReservationsClient() {
     };
 
 
-    const getStatusVariant = (status: string) => {
+    const getStatusVariant = (status: string | undefined) => {
         switch (status) {
             case 'Active': return 'default';
             case 'Upcoming': return 'secondary';
@@ -362,7 +362,7 @@ export default function ReservationsClient() {
         }
     };
     
-    const getStatusClass = (status: string) => {
+    const getStatusClass = (status: string | undefined) => {
         if (status === 'Active') return 'bg-green-600 hover:bg-green-700';
         return '';
     }
@@ -373,15 +373,12 @@ export default function ReservationsClient() {
         }
         const lowercasedTerm = searchTerm.toLowerCase();
         return reservations.filter(res => {
-            // Defensive check: ensure 'res' object is valid before proceeding.
+            // Defensive check: ensure 'res' object and its properties are valid before proceeding.
             if (!res) {
                 return false;
             }
-            
-            // Defensively check properties.
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
-                
             return customerNameMatch || idMatch;
         });
     }, [reservations, searchTerm]);
