@@ -20,14 +20,17 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Si la autenticación no está cargando y ya hay un usuario, redirigir.
+    // Esto previene redirecciones prematuras.
     if (!loading && user) {
-        // Si hay un usuario, sin importar el rol, lo llevamos al dashboard.
-        // La lógica del middleware ya previene que roles no autorizados entren.
+        // Redirigir al dashboard principal para todos los roles de personal.
+        // El middleware y el layout se encargarán de las vistas específicas de cada rol.
         router.replace('/dashboard');
     }
-  }, [user, loading, role, router]);
+  }, [user, loading, router]);
 
-
+  // Muestra un spinner de carga global mientras se verifica el estado de autenticación.
+  // Esto es crucial para prevenir que se muestre brevemente el login a un usuario ya autenticado.
   if (loading) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background">
@@ -36,7 +39,7 @@ export default function LoginPage() {
     );
   }
   
-  // Si no hay usuario, siempre mostramos el formulario de login.
+  // Si la carga ha terminado y NO hay usuario, es seguro mostrar el formulario de login.
   if (!user) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
@@ -60,7 +63,8 @@ export default function LoginPage() {
     );
   }
 
-  // Fallback mientras se redirige.
+  // Muestra un spinner como fallback mientras se efectúa la redirección del useEffect.
+  // Este estado solo debería ser visible por un instante.
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
