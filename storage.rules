@@ -4,37 +4,36 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
   
-    // Helper function to check for admin roles
-    function isStaff() {
-      // Assumes user profile is stored in Firestore
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
+    // Helper function to check for admin/supervisor roles by reading Firestore
+    function isStaff(userId) {
+      return get(/databases/(default)/documents/users/$(userId)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
 
-    // Vehicle Images: Publicly readable, but only staff can write.
+    // Vehicle images: Publicly readable, only staff can write/delete
     match /vehicles/{allPaths=**} {
       allow read: if true;
-      allow write: if isStaff();
+      allow write: if request.auth != null && isStaff(request.auth.uid);
     }
     
-    // Inspection Photos: Users can only write to their own reservation's inspection folder.
-    // Staff can read/write all inspection photos.
-    match /inspections/{reservationId}/{type}/{fileName} {
-      allow read: if isStaff();
-      // This rule is tricky without the customer ID. A more robust rule would involve checking the reservation document.
-      // For now, allow any authenticated user to write here. Access will be controlled by secure URLs in Firestore.
-      allow write: if request.auth != null; 
-    }
-
-    // Signatures: Similar to inspections, authenticated users can write.
-    match /signatures/{reservationId}/{type}/{fileName} {
-      allow read: if isStaff();
-      allow write: if request.auth != null;
+    // Inspection photos: Only authenticated users can write to their own reservation's folder. Staff can read all.
+    match /inspections/{reservationId}/{allPaths=**} {
+        allow read: if request.auth != null && isStaff(request.auth.uid);
+        // Users can only write to their own reservation folder, which we check via a Firestore read
+        allow write: if request.auth != null && (get(/databases/(default)/documents/reservations/$(reservationId)).data.customerId == request.auth.uid || isStaff(request.auth.uid));
     }
     
-    // General Documents: Only staff can write. Access control is managed via Firestore document URLs.
+    // Signatures: Same logic as inspections
+    match /signatures/{reservationId}/{allPaths=**} {
+       allow read: if request.auth != null && isStaff(request.auth.uid);
+       allow write: if request.auth != null && (get(/databases/(default)/documents/reservations/$(reservationId)).data.customerId == request.auth.uid || isStaff(request.auth.uid));
+    }
+    
+    // General documents: Users can upload, only staff can read/delete
     match /documents/{fileName} {
-       allow read: if request.auth != null; // Allow authenticated users to read if they have the URL
-       allow write: if isStaff();
+      allow read: if request.auth != null && isStaff(request.auth.uid);
+      allow write: if request.auth != null; // Allows any signed-in user to upload
+      allow delete: if request.auth != null && isStaff(request.auth.uid);
     }
   }
 }
+    

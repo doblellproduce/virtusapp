@@ -4,80 +4,101 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check for staff roles
+    // Helper functions to check for roles
     function isStaff() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return role in ['Admin', 'Supervisor', 'Secretary'];
-    }
-    
-    // Helper function to check for admin/supervisor roles
-    function isAdminOrSupervisor() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return role in ['Admin', 'Supervisor'];
+      // Allows Admin, Supervisor, or Secretary
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
 
-    // Users: Can create their own profile on signup. Can read/update their own profile. Admins can manage all.
+    function isAdmin() {
+      // Only Admin or Supervisor
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
+    }
+
+    // Users collection
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId || isAdminOrSupervisor();
-      allow create: if request.auth.uid == userId || isAdminOrSupervisor(); // Allow user creation on signup
-      allow delete: if isAdminOrSupervisor();
+      // Any authenticated user can create their own user document (on signup)
+      allow create: if request.auth.uid == userId;
+      // Users can read/update their own profile. Staff can read any profile.
+      allow read, update: if request.auth.uid == userId || isStaff();
+      // Only Admins can delete users
+      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
     }
-    
-    // Customers: Mirrored from user profiles for this app's logic.
+
+    // Customers collection
     match /customers/{customerId} {
-      allow read, update, delete: if isAdminOrSupervisor();
+      // Any authenticated user can create a customer profile (themselves)
       allow create: if request.auth.uid != null;
+      // Only staff can manage all customer profiles
+      allow read, update, delete: if isStaff();
     }
-
-    // Vehicles: Public can read. Admin/Supervisor can manage.
+    
+    // Vehicles collection
     match /vehicles/{vehicleId} {
+      // Anyone can read the vehicle list (for the public-facing site)
       allow read: if true;
-      allow create, update, delete: if isAdminOrSupervisor();
+      // Only Admins or Supervisors can manage vehicles
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Reservations: Authenticated can create. Staff can read all. Users can only read/update their own.
+
+    // Reservations collection
     match /reservations/{reservationId} {
-      allow create: if request.auth.uid != null;
+      // Any authenticated user can create a reservation for themselves
+      allow create: if request.auth.uid != null && request.resource.data.customerId == request.auth.uid;
+      // Staff can read all reservations. Clients can only read their own.
       allow read: if isStaff() || get(/databases/$(database)/documents/reservations/$(reservationId)).data.customerId == request.auth.uid;
+      // Staff can update any reservation. Clients can update their own (e.g., to cancel).
       allow update: if isStaff() || get(/databases/$(database)/documents/reservations/$(reservationId)).data.customerId == request.auth.uid;
-      allow delete: if isAdminOrSupervisor();
+      // Only Admins or Supervisors can delete reservations
+      allow delete: if isAdmin();
     }
-    
-    // Invoices: Admin/Supervisor only for now.
+
+    // Invoices collection
     match /invoices/{invoiceId} {
-        allow read, create, update, delete: if isAdminOrSupervisor();
-    }
-
-    // Maintenance & Expenses: Managed by Admin/Supervisor
-    match /maintenanceLogs/{logId} {
-       allow read, create, update, delete: if isAdminOrSupervisor();
+      // Only Staff can manage invoices
+      allow read, create, update, delete: if isStaff();
     }
     
+    // Expenses and Maintenance Logs
     match /expenses/{expenseId} {
-       allow read, create, update, delete: if isAdminOrSupervisor();
+       // Only Staff can manage expenses
+       allow read, create, update, delete: if isStaff();
     }
     
-    // Reviews: Public read. Any authenticated user can create. Admin/Supervisor can moderate.
-    match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if request.auth.uid != null;
-      allow update, delete: if isAdminOrSupervisor();
+    match /maintenanceLogs/{logId} {
+       // Only Staff can manage maintenance
+       allow read, create, update, delete: if isStaff();
     }
 
-    // Documents and Contracts: Managed by Admin/Supervisor. Users can read their own contracts.
-     match /documents/{documentId} {
-        allow read, create, update, delete: if isAdminOrSupervisor();
+    // Documents and Contracts
+    match /documents/{documentId} {
+       // Authenticated users can upload for themselves, Staff can manage all
+       allow create: if request.auth.uid != null;
+       allow read, delete: if isStaff();
     }
     
     match /contracts/{contractId} {
-        allow read: if isAdminOrSupervisor() || get(/databases/$(database)/documents/contracts/$(contractId)).data.customerId == request.auth.uid;
-        allow create, update, delete: if isAdminOrSupervisor();
+        // Only Staff can manage contracts
+        allow read, create, update, delete: if isStaff();
     }
 
-    // Activity Logs: Any authenticated user can create (log their own actions). Admins can read all.
-    match /activityLogs/{logId} {
-      allow read: if isAdminOrSupervisor();
+    // Reviews
+    match /reviews/{reviewId} {
+      // Publicly readable once approved
+      allow read: if resource.data.status == 'Approved' || isStaff();
+      // Any authenticated user can create a review for their own reservation
       allow create: if request.auth.uid != null;
+      // Only Admins/Supervisors can approve/reject/delete reviews
+      allow update, delete: if isAdmin();
+    }
+
+    // Activity Logs
+    match /activityLogs/{logId} {
+      // Any authenticated user can write to the log (for their own actions)
+      // Only Admins/Supervisors can read the full log
+      allow create: if request.auth.uid != null;
+      allow read: if isAdmin();
     }
   }
 }
+    

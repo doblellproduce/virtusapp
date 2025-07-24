@@ -60,6 +60,14 @@ export default function ReservationsClient() {
         const unsubReservations = onSnapshot(collection(db, 'reservations'), (snapshot) => {
             const reservationsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
             setReservations(reservationsData);
+        }, (error) => {
+            console.error("Error fetching reservations: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Permission Denied',
+                description: 'You may not have permission to view all reservations. Please contact an administrator.',
+                duration: 7000,
+            });
         });
         const unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
@@ -70,7 +78,7 @@ export default function ReservationsClient() {
             unsubReservations();
             unsubCustomers();
         };
-    }, [db]);
+    }, [db, toast]);
 
     React.useEffect(() => {
         const viewId = searchParams.get('view');
@@ -372,18 +380,12 @@ export default function ReservationsClient() {
             return reservations;
         }
         const lowercasedTerm = searchTerm.toLowerCase();
-        // This is the robust filtering logic.
         return reservations.filter(res => {
-            // 1. Ensure the reservation object itself is not null/undefined.
-            if (!res) {
-                return false;
-            }
-            // 2. Check customer name: must exist and be a string.
+            if (!res) return false;
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
-            // 3. Check reservation ID: must exist and be a string.
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
-            
-            return customerNameMatch || idMatch;
+            const vehicleMatch = typeof res.vehicle === 'string' && res.vehicle.toLowerCase().includes(lowercasedTerm);
+            return customerNameMatch || idMatch || vehicleMatch;
         });
     }, [reservations, searchTerm]);
     
@@ -403,7 +405,7 @@ export default function ReservationsClient() {
                      <div className="relative pt-2">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Search by customer or reservation ID..." 
+                            placeholder="Search by customer, vehicle, or reservation ID..." 
                             className="pl-10"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -597,3 +599,4 @@ export default function ReservationsClient() {
         </div>
     );
 }
+    
