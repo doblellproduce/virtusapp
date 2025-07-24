@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, onSnapshot, addDoc, collection, setDoc, getDoc } from 'firebase/firestore';
 import type { UserProfile, UserRole, ActivityLog } from '@/lib/types';
-import { auth, db, storage } from '@/lib/firebase/admin'; 
+import { auth, db, storage } from '@/lib/firebase/client'; 
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from "firebase/storage";
 import type { Auth } from 'firebase/auth';
