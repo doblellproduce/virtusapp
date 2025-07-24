@@ -17,24 +17,32 @@ export async function POST(request: NextRequest) {
     const userDocSnap = await userDocRef.get();
     
     let userProfile = null;
+    let userRole = 'Client'; // Default role
+
     if (userDocSnap.exists) {
         userProfile = userDocSnap.data();
+        userRole = userProfile?.role || 'Client';
     } else {
-        // If the user document doesn't exist, it might be a new client registration.
-        // We can create a default profile here if needed, or just assign a client role.
-        // For this app, non-staff users are 'Client' by default.
-        // No doc creation needed for clients.
+        // This is a new user, create a default profile for them.
+        // This is especially important for client users who sign up but don't have a pre-made profile.
+        const newUserProfile = {
+            email: decodedToken.email,
+            name: decodedToken.name || 'New Client',
+            role: 'Client',
+            photoURL: decodedToken.picture || '',
+        };
+        await userDocRef.set(newUserProfile);
+        userProfile = newUserProfile;
+        userRole = 'Client';
     }
     
-    const userRole = userProfile?.role || 'Client';
-
     // Set custom claim for role-based access in middleware or server components
     await adminAuth.setCustomUserClaims(uid, { role: userRole });
     
     const userNameForLog = userProfile?.name || decodedToken.email || 'Unknown User';
     
-    const isNewUser = decodedToken.auth_time === decodedToken.iat;
-    if (!isNewUser && userProfile) { 
+    // Log only if it's not the user's very first authentication
+    if (decodedToken.auth_time < decodedToken.iat - 5) { // Check if auth_time is reasonably before issuance time
         await adminDB.collection('activityLogs').add({
             timestamp: new Date().toISOString(),
             user: userNameForLog,
