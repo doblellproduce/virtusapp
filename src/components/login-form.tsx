@@ -33,7 +33,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
   const [error, setError] = React.useState<string | null>(null);
-  const { login, sendPasswordReset, role } = useAuth();
+  const { login, sendPasswordReset } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,10 +50,6 @@ export default function LoginForm() {
     try {
       await login(data.email, data.password);
       const redirectedFrom = searchParams.get('redirectedFrom');
-      
-      // The role might not be updated immediately after login,
-      // so we handle the redirect based on the presence of the param
-      // and let the useAuth hook handle the role-based routing if no param exists.
       router.push(redirectedFrom || '/dashboard');
 
     } catch (error: any) {

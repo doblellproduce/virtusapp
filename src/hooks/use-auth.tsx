@@ -59,9 +59,9 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       if (authUser) {
-        setUser(authUser); 
         try {
             await postAuthAction(authUser);
+            setUser(authUser); 
 
             const userDocRef = doc(db, 'users', authUser.uid);
             const unsubscribeSnapshot = onSnapshot(userDocRef, (userDocSnap) => {
@@ -127,22 +127,20 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
     }
   }, [db, user, userProfile]);
 
-  const value: AuthContextType = {
-    loading,
-    user,
-    userProfile,
-    role,
-    login: handleLogin,
-    logout: handleLogout,
-    sendPasswordReset: handlePasswordReset,
-    logActivity,
-    db,
-    storage,
-    auth,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+        loading,
+        user,
+        userProfile,
+        role,
+        login: handleLogin,
+        logout: handleLogout,
+        sendPasswordReset: handlePasswordReset,
+        logActivity,
+        db,
+        storage,
+        auth,
+    }}>
       {children}
     </AuthContext.Provider>
   );
