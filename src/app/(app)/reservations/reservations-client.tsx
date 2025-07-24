@@ -21,6 +21,7 @@ import { onSnapshot, collection, addDoc, doc, updateDoc, setDoc, getDocs, query,
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { CustomerCombobox } from '@/components/customer-combobox';
 import DepartureInspectionModal from '@/components/departure-inspection-modal';
+import { differenceInCalendarDays } from 'date-fns';
 
 type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection'>;
 
@@ -156,7 +157,7 @@ export default function ReservationsClient() {
             }
             return max;
         }, 0);
-        return `RES-${String(maxId + 1).padStart(3, '0')}`;
+        return `RES-${String(maxId > 0 ? maxId + 1 : Date.now().toString().slice(-3)).padStart(3, '0')}`;
     };
 
     const checkVehicleAvailability = async (vehicleId: string, pickup: string, dropoff: string, excludeReservationId?: string) => {
@@ -194,7 +195,7 @@ export default function ReservationsClient() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) return;
+        if (!db || !user) return;
 
         const isAvailable = await checkVehicleAvailability(reservationData.vehicleId, reservationData.pickupDate, reservationData.dropoffDate, isEditing ? editingReservation?.id : undefined);
         if (!isAvailable) {
@@ -204,53 +205,47 @@ export default function ReservationsClient() {
         const agentName = user?.displayName ?? 'System';
         const selectedVehicle = vehicles.find(v => v.id === reservationData.vehicleId);
 
-        if (!selectedVehicle) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Selected vehicle not found. Please try again.',
-            });
+        if (!selectedVehicle || !reservationData.pickupDate || !reservationData.dropoffDate) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Missing required reservation data.' });
             return;
         }
 
+        const pickupDate = new Date(reservationData.pickupDate);
+        const dropoffDate = new Date(reservationData.dropoffDate);
+        const rentalDays = differenceInCalendarDays(dropoffDate, pickupDate) || 1;
+        const totalCost = rentalDays * selectedVehicle.pricePerDay;
+
         const originalVehicleId = isEditing ? editingReservation?.vehicleId : null;
 
-        if (isEditing && editingReservation) {
-            const resRef = doc(db, 'reservations', editingReservation.id);
-            await updateDoc(resRef, {
-                ...reservationData,
-                vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
-            });
+        const resId = isEditing ? editingReservation!.id : generateNewReservationId();
+        const dataToSave = {
+            ...reservationData,
+            vehicle: `${selectedVehicle.make} ${selectedVehicle.model}`,
+            totalCost: totalCost,
+            agent: isEditing ? editingReservation!.agent : agentName,
+        };
 
-            await logActivity('Update', 'Reservation', editingReservation.id, `Updated reservation for ${reservationData.customerName}.`);
-
-            if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
-                const oldVehicleRef = doc(db, 'vehicles', originalVehicleId);
-                await updateDoc(oldVehicleRef, { status: 'Available' });
-                await logActivity('Update', 'Vehicle', originalVehicleId, `Status set to Available (reservation updated).`);
-
-                const newVehicleRef = doc(db, 'vehicles', selectedVehicle.id);
-                await updateDoc(newVehicleRef, { status: 'Rented' });
-                await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (reservation updated).`);
-            }
-
+        if (isEditing) {
+            const resRef = doc(db, 'reservations', resId);
+            await updateDoc(resRef, dataToSave);
+            await logActivity('Update', 'Reservation', resId, `Updated reservation for ${dataToSave.customerName}.`);
             toast({ title: "Reservation Updated" });
         } else {
-            const newId = generateNewReservationId();
-            const reservationToAdd: Omit<Reservation, 'id'> = {
-                ...reservationData,
-                vehicle: selectedVehicle.make + ' ' + selectedVehicle.model,
-                agent: agentName,
-            };
-            await setDoc(doc(db, 'reservations', newId), reservationToAdd);
-            await logActivity('Create', 'Reservation', newId, `Created reservation for ${reservationToAdd.customerName} with vehicle ${reservationToAdd.vehicle}`);
-
-            const vehicleRef = doc(db, 'vehicles', selectedVehicle.id);
-            await updateDoc(vehicleRef, { status: 'Rented' });
-            await logActivity('Update', 'Vehicle', selectedVehicle.id, `Status set to Rented (new reservation).`);
-
+            await setDoc(doc(db, 'reservations', resId), dataToSave);
+            await logActivity('Create', 'Reservation', resId, `Created reservation for ${dataToSave.customerName}.`);
             toast({ title: "Reservation Created" });
         }
+        
+        // Update vehicle status
+        if (originalVehicleId && originalVehicleId !== selectedVehicle.id) {
+            await updateDoc(doc(db, 'vehicles', originalVehicleId), { status: 'Available' });
+        }
+        const newStatus = dataToSave.status === 'Completed' || dataToSave.status === 'Cancelled' ? 'Available' : 'Rented';
+        await updateDoc(doc(db, 'vehicles', selectedVehicle.id), { status: newStatus });
+        
+        // Generate Invoice
+        await handleGenerateInvoice({ ...dataToSave, id: resId });
+        
         setOpen(false);
     };
     
@@ -278,14 +273,13 @@ export default function ReservationsClient() {
         });
     };
     
-    const handleGenerateInvoice = async (reservation: Reservation | null) => {
-        if (!db || !reservation?.id) return;
-        const agentName = user?.displayName ?? 'System';
+    const handleGenerateInvoice = async (reservation: (Reservation | (Omit<Reservation, 'id'> & {id: string})) | null) => {
+        if (!db || !reservation?.id || !user) return;
+        const agentName = user.displayName ?? 'System';
         
-        const newInvoiceId = `INV-2024-${String(Date.now()).slice(-4)}`;
+        const newInvoiceId = `INV-${reservation.id.replace('RES-', '')}-${Date.now().toString().slice(-4)}`;
         
         const newInvoice = {
-            id: newInvoiceId,
             customer: reservation.customerName,
             date: new Date().toISOString().split('T')[0],
             amount: String(reservation.totalCost?.toFixed(2) || '0.00'),
@@ -295,12 +289,12 @@ export default function ReservationsClient() {
             reservationId: reservation.id,
         };
 
-        await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice);
-        await logActivity('Create', 'Invoice', newInvoiceId, `Generated invoice for reservation ${reservation.id}`);
+        await setDoc(doc(db, 'invoices', newInvoiceId), newInvoice, { merge: true });
+        await logActivity('Create', 'Invoice', newInvoiceId, `Generated/Updated invoice for reservation ${reservation.id}`);
         
         toast({
             title: 'Invoice Generated',
-            description: `Invoice ${newInvoiceId} for ${reservation.id} created with amount $${newInvoice.amount}.`,
+            description: `Invoice ${newInvoiceId} for ${reservation.id} has been created/updated.`,
         });
     };
     
@@ -397,13 +391,13 @@ export default function ReservationsClient() {
         const lowercasedTerm = term.toLowerCase();
         
         return reservations.filter(res => {
-            // Guard clause to ensure 'res' is a valid object before accessing properties
             if (!res) return false;
             
             const customerNameMatch = typeof res.customerName === 'string' && res.customerName.toLowerCase().includes(lowercasedTerm);
             const idMatch = typeof res.id === 'string' && res.id.toLowerCase().includes(lowercasedTerm);
+            const vehicleMatch = typeof res.vehicle === 'string' && res.vehicle.toLowerCase().includes(lowercasedTerm);
             
-            return customerNameMatch || idMatch;
+            return customerNameMatch || idMatch || vehicleMatch;
         });
     }, [reservations, searchTerm]);
     
@@ -423,7 +417,7 @@ export default function ReservationsClient() {
                      <div className="relative pt-2">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Search by customer or reservation ID..." 
+                            placeholder="Search by customer, vehicle, or ID..." 
                             className="pl-10"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
