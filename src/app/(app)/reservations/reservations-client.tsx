@@ -52,7 +52,6 @@ export default function ReservationsClient() {
     const [inspectionType, setInspectionType] = React.useState<'departure' | 'return'>('departure');
 
     React.useEffect(() => {
-        // FIX: Ensure db and user are loaded before subscribing to prevent permission errors
         if (!db || !user) return;
 
         const unsubVehicles = onSnapshot(collection(db, 'vehicles'), (snapshot) => {
@@ -93,7 +92,7 @@ export default function ReservationsClient() {
             unsubReservations();
             unsubCustomers();
         };
-    }, [db, user, toast]); // Dependency array includes user and db
+    }, [db, user, toast]);
 
     React.useEffect(() => {
         const viewId = searchParams.get('view');

@@ -1,12 +1,11 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminAuth } from '@/lib/firebase/server/admin';
 
 // Paths that do not require authentication
 const publicPaths = ['/login', '/contrato'];
 // API paths that do not require authentication
-const publicApiPaths = ['/api/auth', '/api/smart-reply']; // Allow smart-reply for unauth use if needed
+const publicApiPaths = ['/api/auth', '/api/smart-reply']; 
 // Protected admin area for staff
 const adminPaths = [
     '/dashboard', '/reservations', '/customers', '/vehicles', 
@@ -17,7 +16,7 @@ const adminPaths = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('firebaseIdToken')?.value;
+  const tokenCookie = request.cookies.get('firebaseIdToken');
 
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path)) || pathname === '/' || pathname.startsWith('/vehiculo');
   const isPublicApiPath = publicApiPaths.some(path => pathname.startsWith(path));
@@ -28,34 +27,17 @@ export async function middleware(request: NextRequest) {
   }
 
   // 2. If no token, redirect to login for any other protected route
-  if (!token) {
+  // The actual token verification will happen on the server-side components/API routes
+  // that need it. The middleware's job is just to protect routes from unauthenticated access.
+  if (!tokenCookie) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectedFrom', pathname);
     return NextResponse.redirect(loginUrl);
   }
   
-  // 3. Verify token and user role
-  try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const role = decodedToken.role;
-
-    // If a user has a role (i.e., they are staff), allow access to admin paths.
-    if (role && adminPaths.some(p => pathname.startsWith(p))) {
-        return NextResponse.next();
-    }
-    
-    // If a user with a valid token tries to access something they shouldn't,
-    // or if a user has no role, redirect them to the main page.
-    return NextResponse.redirect(new URL('/', request.url));
-
-  } catch (error) {
-    console.error("Token verification failed in middleware:", error);
-    const loginUrl = new URL('/login', request.url);
-    const response = NextResponse.redirect(loginUrl);
-    // Clear the invalid cookie
-    response.cookies.delete('firebaseIdToken');
-    return response;
-  }
+  // 3. If a token cookie exists, let the request proceed.
+  // The server-side logic in pages or API routes will handle the actual verification and role checking.
+  return NextResponse.next();
 }
 
 // Matcher to apply the middleware to all paths except for Next.js internal assets

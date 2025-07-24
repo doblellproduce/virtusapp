@@ -201,7 +201,7 @@ export default function DocumentsPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Driver's License">Driver's License</SelectItem>
-                                        <SelectItem value="ID Card">ID Card (Cédula)</SelectItem>
+                                        <SelectItem value="ID Card (Cédula)">ID Card (Cédula)</SelectItem>
                                         <SelectItem value="Passport">Passport</SelectItem>
                                         <SelectItem value="Other">Other</SelectItem>
                                     </SelectContent>
