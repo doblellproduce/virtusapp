@@ -52,7 +52,9 @@ export default function ReservationsClient() {
     const [inspectionType, setInspectionType] = React.useState<'departure' | 'return'>('departure');
 
     React.useEffect(() => {
-        if (!db) return;
+        // FIX: Ensure db and user are loaded before subscribing to prevent permission errors
+        if (!db || !user) return;
+
         const unsubVehicles = onSnapshot(collection(db, 'vehicles'), (snapshot) => {
             const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
@@ -74,13 +76,24 @@ export default function ReservationsClient() {
         const unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
             setCustomers(customersData);
+        }, (error) => {
+             console.error("Error fetching customers: ", error);
+             if (error.message.includes('permission-denied')) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Permission Denied',
+                    description: 'You do not have permission to view customers. Please contact an administrator.',
+                    duration: 7000,
+                });
+            }
         });
+
         return () => {
             unsubVehicles();
             unsubReservations();
             unsubCustomers();
         };
-    }, [db, toast]);
+    }, [db, user, toast]); // Dependency array includes user and db
 
     React.useEffect(() => {
         const viewId = searchParams.get('view');

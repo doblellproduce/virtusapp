@@ -1,5 +1,5 @@
 
-export type UserRole = 'Admin' | 'Supervisor' | 'Secretary'; // Removed 'Client'
+export type UserRole = 'Admin' | 'Supervisor' | 'Secretary';
 
 export type UserProfile = {
     id: string; // Corresponds to Firebase Auth UID
