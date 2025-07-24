@@ -24,8 +24,8 @@ export default function RootLayout({
           {children}
         </AuthProvider>
         <Toaster />
+        {process.env.NEXT_PUBLIC_GA_ID && <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />}
       </body>
-      <GoogleAnalytics gaId="G-XYZ" />
     </html>
   );
 }

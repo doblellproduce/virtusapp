@@ -1,8 +1,11 @@
 
 "use client";
 
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import LoginForm from '@/components/login-form';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 const Logo = () => (
     <div className="flex flex-col items-center justify-center p-2 text-center">
@@ -13,7 +16,13 @@ const Logo = () => (
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4 relative">
+        <Button asChild variant="outline" className="absolute top-4 left-4">
+            <Link href="/">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver al Inicio
+            </Link>
+        </Button>
       <div className="w-full max-w-md">
         <Card className="shadow-2xl">
           <CardHeader className="text-center space-y-4">
