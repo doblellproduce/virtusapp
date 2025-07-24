@@ -3,61 +3,26 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if the user has a specific role
-    function hasRole(role) {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
-    }
     
-    // Helper function to check if user is the owner of the document
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Allow public read for vehicles, but only admins/supervisors can write
+    // Allow public read access to vehicles for the public-facing site
     match /vehicles/{vehicleId} {
       allow read: if true;
-      allow write: if hasRole('Admin') || hasRole('Supervisor');
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
     }
 
-    // Allow public read for reviews
-    match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update, delete: if hasRole('Admin') || hasRole('Supervisor');
-    }
-    
-    // Users can read their own profile, Admins can manage all profiles
+    // Allow logged-in users to manage their own data
     match /users/{userId} {
-      allow read: if isOwner(userId) || hasRole('Admin');
-      allow write: if isOwner(userId) || hasRole('Admin');
-    }
-    
-    // Customers can only be managed by staff
-    match /customers/{customerId} {
-        allow read, write, delete: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary');
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
     }
 
-    // Reservations can be read by staff or the customer who owns it.
-    // Write access is for staff only.
-    match /reservations/{reservationId} {
-      allow read: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary') || isOwner(resource.data.customerId);
-      allow write: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary');
-    }
-    
-    // General authenticated access for most other business-related collections
+    // Secure other collections to only be writable by authenticated staff
+    // and readable by relevant parties.
     match /{collection}/{docId} {
-      allow read, write: if hasRole('Admin') || hasRole('Supervisor') || hasRole('Secretary');
-    }
-    
-     match /activityLogs/{logId} {
-      allow read: if hasRole('Admin') || hasRole('Supervisor');
-      allow create: if true; // Allow system/clients to write logs
+      // Default deny all reads and writes
+      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
   }
 }
