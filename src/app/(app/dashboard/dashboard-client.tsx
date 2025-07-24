@@ -11,7 +11,17 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Car, User, DollarSign, Wrench, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import type { Reservation } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils';
+
+// Function to format currency, moved here to be self-contained
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value);
+};
+
 
 // Dynamically import the chart component to prevent SSR issues with recharts
 const RevenueChart = dynamic(() => import('@/components/revenue-chart'), {
