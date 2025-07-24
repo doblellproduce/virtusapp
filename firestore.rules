@@ -34,7 +34,7 @@ service cloud.firestore {
     }
 
     match /vehicles/{vehicleId} {
-      // Allow public read for vehicle lists and individual vehicle detail pages
+      // Allow public read for vehicle details page and vehicle list
       allow get, list: if true;
       allow write, create, delete: if isStaff();
     }
@@ -60,7 +60,10 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
-       allow read, write, create, delete: if isStaff();
+       // Allow public read for approved reviews
+       allow get: if resource.data.status == 'Approved' || isStaff();
+       allow list: if true;
+       allow write, create, delete: if isStaff();
     }
     
     match /activityLogs/{logId} {
