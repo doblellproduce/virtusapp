@@ -1,70 +1,68 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Helper functions
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+
+    function isSupervisor() {
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor'];
+    }
+
     function isStaff() {
-      return request.auth.token.role in ['Admin', 'Supervisor', 'Secretary'];
-    }
-    
-    // --- Public read, Staff write ---
-    match /vehicles/{vehicleId} {
-      allow get, list: if true;
-      allow write, create, delete: if isStaff();
+        return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
 
-    match /reviews/{reviewId} {
-        allow list, create: if request.auth != null;
-        allow get: if true;
-        allow update, delete: if isStaff();
-    }
-    
-    // --- Staff only access ---
-    match /customers/{customerId} {
-      allow read, write, create, delete: if isStaff();
-    }
-    
-    match /reservations/{reservationId} {
-      allow read, write, create, delete: if isStaff();
-    }
-
-    match /invoices/{invoiceId} {
-        allow read, write, create, delete: if isStaff();
-    }
-
-    match /expenses/{expenseId} {
-        allow read, write, create, delete: if isStaff();
-    }
-    
-    match /maintenanceLogs/{logId} {
-        allow read, write, create, delete: if isStaff();
-    }
-    
-    match /documents/{documentId} {
-        allow read, write, create, delete: if isStaff();
-    }
-
-    match /contracts/{contractId} {
-        allow read, write, create, delete: if isStaff();
-    }
-
-    // --- Admins only ---
+    // Users: Can only view/edit their own profile. Admins can view/edit any.
     match /users/{userId} {
-        allow read, write, delete: if request.auth.token.role == 'Admin';
-        allow create: if request.auth.token.role == 'Admin';
+      allow read: if isOwner(userId) || isSupervisor();
+      allow write: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin(); // Only admins can create new staff users.
     }
 
-    match /activityLogs/{logId} {
-      allow read: if request.auth.token.role in ['Admin', 'Supervisor'];
-      allow create: if request.auth != null;
+    // Vehicles: Publicly readable, but only staff can modify.
+    match /vehicles/{vehicleId} {
+      allow read: if true;
+      allow write: if isSupervisor();
     }
     
-     // --- Client-specific rules ---
-    match /users/{uid} {
-      // Allow clients to read their own user profile
-      allow get: if request.auth != null && request.auth.uid == uid;
+    // Reservations: Users can read their own. Staff can read all. Users can create. Staff can update.
+    match /reservations/{reservationId} {
+      allow read: if isAuth() && (resource.data.customerId == request.auth.uid || isStaff());
+      allow create: if isAuth();
+      allow update: if isStaff();
+      allow delete: if isStaff();
     }
 
+    // Customers: Only staff can access customer data.
+    match /customers/{customerId} {
+      allow read, write: if isStaff();
+    }
+
+    // Invoices, Expenses, MaintenanceLogs, Documents, Contracts, Reviews
+    // All of these should only be accessible by staff members.
+    match /{collection}/{docId} 
+        where collection in ['invoices', 'expenses', 'maintenanceLogs', 'documents', 'contracts', 'reviews'] {
+      allow read, write, delete: if isStaff();
+    }
+
+    // Activity Logs: Write-only for authenticated users (for logging their own actions), read-only for supervisors.
+    match /activityLogs/{logId} {
+      allow read: if isSupervisor();
+      allow create: if isAuth(); // The app will write logs on behalf of the user.
+      allow update, delete: if false; // Logs should be immutable.
+    }
   }
 }
