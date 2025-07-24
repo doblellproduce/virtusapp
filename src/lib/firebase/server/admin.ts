@@ -4,22 +4,22 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
 
-const serviceAccount = {
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  // Correctly format the private key by replacing \\n with \n
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-};
-
 let adminApp: App;
 let adminAuth: Auth;
 let adminDB: Firestore;
 let adminStorage: Storage;
 
+// Correctly format the private key by replacing \\n with \n
+const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
 if (getApps().length === 0) {
     adminApp = initializeApp({
-      credential: cert(serviceAccount),
-      storageBucket: `${serviceAccount.projectId}.appspot.com`,
+      credential: cert({
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      }),
+      storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
     });
 } else {
     adminApp = getApps()[0];
