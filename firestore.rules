@@ -3,71 +3,74 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Function to check if a user is an authenticated staff member
+
+    // Helper function to check if the user is an authenticated admin/staff
     function isStaff() {
-      // Check if the user is authenticated and if their role in Firestore is one of the allowed roles.
-      return request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary']
-      );
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Supervisor', 'Secretary'];
     }
-    
-    // Function to check if a user is the owner of the document
+
+    // Helper function to check if the user is the owner of the document
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Public collections - readable by anyone
-    match /vehicles/{vehicleId} {
-      allow read: if true;
-      allow write: if isStaff(); // Only staff can create, update, or delete vehicle listings
-    }
-    
-    match /reviews/{reviewId} {
-      allow read: if true; // Allow anyone to read approved reviews
-      allow create: if request.auth != null; // Allow any authenticated user to create a review
-      allow update, delete: if isStaff(); // Only staff can moderate (approve, delete) reviews
-    }
-
-    // Staff-only collections
+    // Users collection:
+    // Admins can manage all users.
+    // Users can read their own profile.
+    // Users can create their own profile upon registration.
     match /users/{userId} {
-      allow read, write: if isStaff();
-    }
-    
-    match /customers/{customerId} {
-      allow read, write: if isStaff();
+      allow read: if isOwner(userId) || request.auth.uid == userId || isStaff();
+      allow write: if isStaff();
+      allow create: if request.auth.uid == userId;
     }
 
+    // Collections accessible by Staff
     match /reservations/{reservationId} {
-      allow read: if isStaff() || isOwner(resource.data.customerId);
-      allow create: if isStaff() || isOwner(request.resource.data.customerId);
-      allow update: if isStaff();
-      allow delete: if isStaff();
+      allow read, write, create, delete: if isStaff();
+    }
+
+    match /customers/{customerId} {
+      allow read, write, create, delete: if isStaff();
+    }
+
+    match /vehicles/{vehicleId} {
+      // Allow public read for vehicle details page
+      allow get: if true;
+      allow list, write, create, delete: if isStaff();
     }
     
-    match /invoices/{invoiceId} {
-      allow read, write: if isStaff();
-    }
-
-    match /expenses/{expenseId} {
-      allow read, write: if isStaff();
-    }
-
-    match /maintenanceLogs/{logId} {
-      allow read, write: if isStaff();
+    match /documents/{documentId} {
+      allow read, write, create, delete: if isStaff();
     }
     
     match /contracts/{contractId} {
-      allow read, write: if isStaff();
+       allow read, write, create, delete: if isStaff();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read, write, create, delete: if isStaff();
+    }
+    
+    match /expenses/{expenseId} {
+      allow read, write, create, delete: if isStaff();
+    }
+
+    match /maintenanceLogs/{logId} {
+       allow read, write, create, delete: if isStaff();
+    }
+
+    match /reviews/{reviewId} {
+       allow read, write, create, delete: if isStaff();
     }
     
     match /activityLogs/{logId} {
-      allow read: if isStaff();
-      allow create: if true; // Allow system/clients to log activities
+      allow read, create: if isStaff();
+      allow update, delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin'; // Only Admins can delete logs
     }
-    
-    match /documents/{docId} {
-        allow read, write: if isStaff();
+
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
