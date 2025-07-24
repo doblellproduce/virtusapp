@@ -289,10 +289,14 @@ export default function ReservationsClient() {
         return '';
     }
     
-    const filteredReservations = reservations.filter(res => 
-        res.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        res.id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredReservations = reservations.filter(res => {
+        if (!searchTerm) return true;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        // Safe check for both customerName and id before calling toLowerCase
+        const customerNameMatch = res.customerName ? res.customerName.toLowerCase().includes(lowercasedTerm) : false;
+        const idMatch = res.id ? res.id.toLowerCase().includes(lowercasedTerm) : false;
+        return customerNameMatch || idMatch;
+    });
 
     return (
         <div className="space-y-6">
@@ -471,3 +475,5 @@ export default function ReservationsClient() {
         </div>
     );
 }
+
+    
