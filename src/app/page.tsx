@@ -19,7 +19,7 @@ const Logo = () => (
     </div>
 );
 
-function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+function VehicleCard({ vehicle, priority }: { vehicle: Vehicle, priority: boolean }) {
     return (
         <Card className="overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-xl">
             <Link href={`/vehiculo/${vehicle.id}`} className="block">
@@ -31,7 +31,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
                         data-ai-hint={vehicle.dataAiHint}
-                        priority={false}
+                        priority={priority}
                     />
                 </div>
                 <CardContent className="p-4">
@@ -121,8 +121,8 @@ export default function HomePage() {
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {vehicles.map(vehicle => (
-                        <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                    {vehicles.map((vehicle, index) => (
+                        <VehicleCard key={vehicle.id} vehicle={vehicle} priority={index === 0}/>
                     ))}
                 </div>
             )}
