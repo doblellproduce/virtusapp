@@ -1,4 +1,4 @@
-git d # Firebase Studio
+odegit d # Firebase Studio
 
 This is a NextJS starter in Firebase Studio.
 

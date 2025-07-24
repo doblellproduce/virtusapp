@@ -25,3 +25,5 @@ secretEnvironmentVariables:
     secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
   - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
     secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+frameworksBackend:
+  region: us-central1
