@@ -2,79 +2,76 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
+
+    // Helper functions
     function isAuth() {
       return request.auth != null;
     }
+
+    function getUserRole() {
+      // Assumes user profiles are stored in a 'users' collection
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isStaff() {
+      return isAuth() && getUserRole() in ['Admin', 'Supervisor', 'Secretary'];
+    }
     
     function isAdmin() {
-      return isAuth() && request.auth.token.role == 'Admin';
-    }
-    
-    function isSupervisor() {
-      return isAuth() && (isAdmin() || request.auth.token.role == 'Supervisor');
-    }
-    
-    function isStaff() {
-      return isAuth() && (isSupervisor() || request.auth.token.role == 'Secretary');
+        return isAuth() && getUserRole() == 'Admin';
     }
 
-    // VEHICLES: Public read, restricted write
+    // Public access for vehicles
     match /vehicles/{vehicleId} {
-      allow get: if true; // Anyone can view a single vehicle
-      allow list: if true; // Anyone can list all vehicles
-      allow create, update, delete: if isSupervisor();
+      allow get, list: if true; // Everyone can see the vehicle fleet
+      allow create, update, delete: if isStaff();
     }
     
-    // All other collections are protected
-    match /users/{userId} {
-      allow read, write: if isAuth() && request.auth.uid == userId;
-      allow list, create, delete: if isAdmin();
-    }
-    
-    match /customers/{customerId} {
-      allow read, list, create, update, delete: if isStaff();
-    }
-    
+    // Reservations can be managed by staff
     match /reservations/{reservationId} {
-        allow read, list, create, update: if isStaff();
-        // Allow clients to read/update their own reservations, but not delete
-        allow read, update: if isAuth() && resource.data.customerId == request.auth.uid;
-        // Staff can cancel (update status), but not delete entirely for records.
-        allow delete: if isAdmin();
-    }
-    
-    match /invoices/{invoiceId} {
-      allow read, list, create, update, delete: if isStaff();
-    }
-    
-    match /expenses/{expenseId} {
-      allow read, list, create, update: if isStaff();
-      allow delete: if isAdmin();
-    }
-    
-    match /maintenanceLogs/{logId} {
-       allow read, list, create: if isStaff();
-       allow delete: if isAdmin();
-    }
-    
-    match /reviews/{reviewId} {
-        allow create: if isAuth(); // Allow any authenticated user to create
-        allow read, list, update, delete: if isSupervisor(); // Only supervisors/admins can manage
+      allow read, write: if isStaff();
     }
 
+    // Customers can be managed by staff
+    match /customers/{customerId} {
+      allow read, write: if isStaff();
+    }
+
+    // Invoices can be managed by staff
+    match /invoices/{invoiceId} {
+        allow read, write: if isStaff();
+    }
+
+    // Expenses can be managed by staff
+    match /expenses/{expenseId} {
+        allow read, write: if isStaff();
+    }
+    
+    // Maintenance Logs can be managed by staff
+    match /maintenanceLogs/{logId} {
+        allow read, write: if isStaff();
+    }
+    
+    // Documents can be managed by staff
+    match /documents/{docId} {
+        allow read, write: if isStaff();
+    }
+
+    // Reviews can be managed by Admins/Supervisors
+    match /reviews/{reviewId} {
+        allow read, write: if isAuth() && getUserRole() in ['Admin', 'Supervisor'];
+    }
+
+    // Activity Logs can only be written by authenticated users (via backend), read by Admin/Supervisor
     match /activityLogs/{logId} {
-      allow read, list: if isSupervisor();
-      // Only the system (via server-side functions) can create logs.
-      allow create, update, delete: if false; 
+        allow create: if isAuth();
+        allow read: if isAuth() && getUserRole() in ['Admin', 'Supervisor'];
     }
-    
-    match /contracts/{contractId} {
-        allow read, list, create, update, delete: if isStaff();
-    }
-    
-    match /documents/{documentId} {
-        allow read, list, create, update, delete: if isStaff();
+
+    // User profiles can be read by any staff, but only modified by Admins
+    match /users/{userId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
   }
 }
