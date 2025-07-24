@@ -5,7 +5,7 @@ import * as React from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,9 +33,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
   const [error, setError] = React.useState<string | null>(null);
-  const { login, sendPasswordReset } = useAuth();
+  const { login, sendPasswordReset, role } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -48,7 +49,13 @@ export default function LoginForm() {
     setError(null);
     try {
       await login(data.email, data.password);
-      // The useAuth hook will handle the redirect on successful state change
+      const redirectedFrom = searchParams.get('redirectedFrom');
+      
+      // The role might not be updated immediately after login,
+      // so we handle the redirect based on the presence of the param
+      // and let the useAuth hook handle the role-based routing if no param exists.
+      router.push(redirectedFrom || '/dashboard');
+
     } catch (error: any) {
        let errorMessage = "An unexpected error occurred.";
        // More specific error handling based on the Firebase Auth error codes

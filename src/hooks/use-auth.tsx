@@ -15,7 +15,7 @@ import { auth, db, storage } from '@/lib/firebase/client';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from "firebase/storage";
 import type { Auth } from 'firebase/auth';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -53,7 +53,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
@@ -68,21 +68,10 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
                 if (userDocSnap.exists()) {
                   const profileData = { id: userDocSnap.id, ...userDocSnap.data() } as UserProfile;
                   setUserProfile(profileData);
-                  const newRole = profileData.role || 'Client';
-                  setRole(newRole);
-
-                  const redirectedFrom = searchParams.get('redirectedFrom');
-
-                  if (newRole !== 'Client') {
-                      router.push(redirectedFrom || '/dashboard');
-                  } else {
-                      router.push(redirectedFrom || '/client-dashboard');
-                  }
+                  setRole(profileData.role || 'Client');
                 } else {
                   setUserProfile(null);
                   setRole('Client');
-                  const redirectedFrom = searchParams.get('redirectedFrom');
-                  router.push(redirectedFrom || '/client-dashboard');
                 }
                 setLoading(false);
             }, (error) => {
@@ -103,7 +92,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [router, searchParams]);
+  }, []);
 
   const handleLogin = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
