@@ -37,17 +37,17 @@ const initializeAdminApp = (): App => {
     }
 };
 
-export const getDb = (): Firestore => {
+export function getDb(): Firestore {
     const app = initializeAdminApp();
     return getFirestore(app);
 }
 
-export const getAuth = (): Auth => {
+export function getAuth(): Auth {
     const app = initializeAdminApp();
     return getAdminAuth(app);
 }
 
-export const getStorage = (): Storage => {
+export function getStorage(): Storage {
     const app = initializeAdminApp();
     return getAdminStorage(app);
 }
