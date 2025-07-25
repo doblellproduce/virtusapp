@@ -1,15 +1,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
+import { getAuth, getDb } from '@/lib/firebase/server/admin';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = getAuth();
+    const db = getDb();
+    
     // 1. Verify Authentication
     const token = request.headers.get('Authorization')?.split('Bearer ')[1];
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
     const uid = decodedToken.uid;
     
     // 2. Get and validate reservation data
@@ -19,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Generate a new reservation ID
-    const reservationsCollection = adminDB.collection('reservations');
+    const reservationsCollection = db.collection('reservations');
     const snapshot = await reservationsCollection.orderBy('id', 'desc').limit(1).get();
     let newIdNum = 1;
     if (!snapshot.empty) {
@@ -32,8 +35,8 @@ export async function POST(request: NextRequest) {
     const newReservationId = `RES-${String(newIdNum).padStart(3, '0')}`;
 
     // 4. Use a transaction to ensure atomicity
-    await adminDB.runTransaction(async (transaction) => {
-        const vehicleRef = adminDB.collection('vehicles').doc(reservationData.vehicleId);
+    await db.runTransaction(async (transaction) => {
+        const vehicleRef = db.collection('vehicles').doc(reservationData.vehicleId);
         const reservationRef = reservationsCollection.doc(newReservationId);
 
         // Check vehicle status within the transaction to prevent race conditions
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
     });
     
     // 5. Log activity
-    await adminDB.collection('activityLogs').add({
+    await db.collection('activityLogs').add({
         timestamp: new Date().toISOString(),
         user: reservationData.customerName,
         action: 'Create',

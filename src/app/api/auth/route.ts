@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase/server/admin';
+import { getAuth } from '@/lib/firebase/server/admin';
 
 // This function handles exchanging a client-side ID token for a server-side session cookie.
 export async function POST(request: NextRequest) {
@@ -10,9 +10,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'ID token is required.' }, { status: 400 });
     }
     
+    const auth = getAuth();
     // Set session expiration to 5 days.
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
 
     const options = {
       name: 'firebaseIdToken', // Use a consistent cookie name

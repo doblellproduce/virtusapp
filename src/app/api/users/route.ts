@@ -1,10 +1,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
+import { getAuth, getDb } from '@/lib/firebase/server/admin';
 import type { UserRole } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = getAuth();
+    const db = getDb();
+    
     // 1. Verify Authentication & Authorization
     const token = request.cookies.get('firebaseIdToken')?.value;
 
@@ -12,10 +15,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: No token provided.' }, { status: 401 });
     }
     
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
     const requestingUid = decodedToken.uid;
     
-    const userDoc = await adminDB.collection('users').doc(requestingUid).get();
+    const userDoc = await db.collection('users').doc(requestingUid).get();
     if (!userDoc.exists || userDoc.data()?.role !== 'Admin') {
          return NextResponse.json({ error: 'Forbidden: You do not have permission to create users.' }, { status: 403 });
     }
@@ -27,14 +30,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Create User in Firebase Auth
-    const userRecord = await adminAuth.createUser({
+    const userRecord = await auth.createUser({
       email: email,
       displayName: displayName,
       emailVerified: false, // User will verify when they set their password
     });
 
     // 4. Create User Profile in Firestore
-    const userDocRef = adminDB.collection("users").doc(userRecord.uid);
+    const userDocRef = db.collection("users").doc(userRecord.uid);
     await userDocRef.set({
       name: displayName,
       email: email,
@@ -43,13 +46,13 @@ export async function POST(request: NextRequest) {
     });
 
     // 5. Generate Password Reset Link (acts as an invite)
-    const link = await adminAuth.generatePasswordResetLink(email);
+    const link = await auth.generatePasswordResetLink(email);
     
     // 6. (Optional but Recommended) Send an invitation email using a service like SendGrid
     // Example: await sendInviteEmail(email, displayName, link);
     
     // 7. Log the activity
-    await adminDB.collection('activityLogs').add({
+    await db.collection('activityLogs').add({
         timestamp: new Date().toISOString(),
         user: userDoc.data()?.name || 'Admin',
         action: 'Create',

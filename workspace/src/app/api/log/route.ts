@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
             const userDoc = await db.collection('users').doc(decodedToken.uid).get();
             if(userDoc.exists) {
                 userName = userDoc.data()?.name || decodedToken.email || 'Unknown User';
+            } else {
+                userName = decodedToken.email || 'Unknown User';
             }
         } catch (error) {
             console.warn("Could not verify token for logging, proceeding as Anonymous.", error);

@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDB } from '@/lib/firebase/server/admin';
+import { getAuth, getDb } from '@/lib/firebase/server/admin';
 import type { ActivityLog } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -8,11 +8,13 @@ export async function POST(request: NextRequest) {
     const token = request.cookies.get('firebaseIdToken')?.value;
     let decodedToken;
     let userName = 'Anonymous';
+    const db = getDb();
+    const auth = getAuth();
 
     if (token) {
         try {
-            decodedToken = await adminAuth.verifyIdToken(token);
-            const userDoc = await adminDB.collection('users').doc(decodedToken.uid).get();
+            decodedToken = await auth.verifyIdToken(token);
+            const userDoc = await db.collection('users').doc(decodedToken.uid).get();
             if(userDoc.exists) {
                 userName = userDoc.data()?.name || decodedToken.email || 'Unknown User';
             }
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required log fields.' }, { status: 400 });
     }
 
-    await adminDB.collection('activityLogs').add({
+    await db.collection('activityLogs').add({
         timestamp: new Date().toISOString(),
         user: userName,
         action,

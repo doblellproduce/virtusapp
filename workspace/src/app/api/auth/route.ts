@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       value: sessionCookie,
       maxAge: expiresIn,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
     };
     
     const response = NextResponse.json({ success: true, message: 'Session created.' }, { status: 200 });

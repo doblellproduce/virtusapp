@@ -1,14 +1,12 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminAuth } from '@/lib/firebase/server/admin';
+import { getAuth } from '@/lib/firebase/server/admin';
 
 async function verifyToken(token: string) {
     try {
-        if (!adminAuth) {
-          throw new Error("Firebase Admin SDK not initialized.");
-        }
-        const decodedToken = await adminAuth.verifyIdToken(token);
+        const auth = getAuth();
+        const decodedToken = await auth.verifyIdToken(token);
         return decodedToken;
     } catch (error) {
         // This can happen if the token is expired or invalid

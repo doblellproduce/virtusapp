@@ -2,15 +2,16 @@
 'use server';
 
 import { subMonths, format, startOfMonth } from 'date-fns';
-import { adminDB } from '@/lib/firebase/server/admin';
+import { getDb } from '@/lib/firebase/server/admin';
 import type { Reservation, Vehicle, Invoice } from '@/lib/types';
 
 // This function will run on the server to fetch all required data in parallel
 export async function getDashboardData() {
   try {
-    const reservationsQuery = adminDB.collection('reservations').orderBy('pickupDate', 'desc').limit(5).get();
-    const vehiclesQuery = adminDB.collection('vehicles').get();
-    const invoicesQuery = adminDB.collection('invoices').orderBy('date', 'desc').get();
+    const db = getDb();
+    const reservationsQuery = db.collection('reservations').orderBy('pickupDate', 'desc').limit(5).get();
+    const vehiclesQuery = db.collection('vehicles').get();
+    const invoicesQuery = db.collection('invoices').orderBy('date', 'desc').get();
 
     const [reservationsSnapshot, vehiclesSnapshot, invoicesSnapshot] = await Promise.all([
       reservationsQuery,
@@ -89,7 +90,8 @@ export async function getDashboardData() {
 
 export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], error?: string }> {
     try {
-        const vehiclesQuery = adminDB.collection('vehicles').where('status', 'in', ['Available', 'Rented']);
+        const db = getDb();
+        const vehiclesQuery = db.collection('vehicles').where('status', 'in', ['Available', 'Rented']);
         const querySnapshot = await vehiclesQuery.get();
         if (querySnapshot.empty) {
             return { vehicles: [] };
