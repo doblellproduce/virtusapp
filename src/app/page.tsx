@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -131,7 +132,7 @@ export default function HomePage() {
 
       <footer id="contact-section" className="border-t bg-muted/50 mt-12">
           <div className="container mx-auto py-6 text-center text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Virtus Car Rental S.R.L. Todos los derechos reservados.
+            © {new Date().getFullYear()} Virtus Car Rental S.R.L. Todos los derechos reservados...
           </div>
       </footer>
     </div>
