@@ -1,24 +1,16 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Vehicles can be read by anyone to be shown on the homepage.
-    // Writing (creating, updating, deleting) requires authentication.
+
+    // Allow public read access to vehicles for the home page showcase
     match /vehicles/{vehicleId} {
       allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // Customer documents can only be accessed by authenticated users.
-    // This is a placeholder; more specific rules might be needed.
-    match /customers/{customerId} {
-       allow read, write: if request.auth != null;
+      allow write: if request.auth != null; // Only authenticated users can write/edit/delete
     }
 
-    // Any other collection requires an authenticated user to access.
-    // This secures collections like reservations, users, invoices, etc.
+    // Secure all other collections by default.
+    // This requires a user to be authenticated to access any other data.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
