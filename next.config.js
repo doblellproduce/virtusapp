@@ -14,10 +14,8 @@ const nextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
-    // This webpack configuration is only applied to the client-side bundle.
     if (!isServer) {
-      // Provide fallbacks for Node.js built-in modules that are used by some of the libraries.
-      // This tells Webpack to use browser-compatible versions of these modules.
+      // This is the correct way to polyfill Node.js built-ins for the client-side bundle.
       config.resolve.fallback = {
         ...config.resolve.fallback,
         "process": require.resolve("process/browser"),
@@ -28,7 +26,7 @@ const nextConfig = {
       };
       
       // The ProvidePlugin makes a module available as a variable in every module.
-      // We need to provide the 'process' module for some libraries to work correctly in the browser.
+      // This is necessary for some libraries that expect 'process' to be global.
       const webpack = require('webpack');
       config.plugins.push(
         new webpack.ProvidePlugin({
@@ -36,7 +34,7 @@ const nextConfig = {
         })
       );
     }
-     
+
     // Exclude firebase-admin from client-side bundles.
     // This is crucial because firebase-admin is a server-only SDK.
     if (!isServer) {
