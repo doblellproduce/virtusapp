@@ -36,7 +36,7 @@ export const initialInvoices: Omit<Invoice, 'id'>[] = [
 
 // --- USERS (for reference) ---
 export const initialUsers: Omit<UserProfile, 'id'>[] = [
-    { name: 'Admin User', email: 'soypromord@gmail.com', role: 'Admin' },
+    { name: 'Luis Mañon', email: 'soypromord@gmail.com', role: 'Admin' },
     { name: 'Sarah Johnson', email: 'sarah.j@example.com', role: 'Supervisor' },
     { name: 'Mark Williams', email: 'mark.w@example.com', role: 'Secretary' },
 ];
