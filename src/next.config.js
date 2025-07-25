@@ -22,29 +22,4 @@ const nextConfig = {
         ...config.resolve.fallback,
         "process": require.resolve("process/browser"),
         "zlib": require.resolve("browserify-zlib"),
-        "stream": require.resolve("stream-browserify"),
-        "util": require.resolve("util/"),
-        "assert": require.resolve("assert/"),
-      };
-      
-      // The ProvidePlugin makes a module available as a variable in every module.
-      // We need to provide the 'process' module for some libraries to work correctly in the browser.
-      const webpack = require('webpack');
-      config.plugins.push(
-        new webpack.ProvidePlugin({
-          process: "process/browser",
-        })
-      );
-    }
-     
-    // Exclude firebase-admin from client-side bundles.
-    // This is crucial because firebase-admin is a server-only SDK.
-    if (!isServer) {
-      config.externals.push('firebase-admin');
-    }
-
-    return config;
-  },
-};
-
-module.exports = nextConfig;
+        "stream": require.resolve("stream-browserif
