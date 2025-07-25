@@ -10,10 +10,14 @@ export async function POST(request: NextRequest) {
     let userName = 'Anonymous';
 
     if (token) {
-        decodedToken = await adminAuth.verifyIdToken(token);
-        const userDoc = await adminDB.collection('users').doc(decodedToken.uid).get();
-        if(userDoc.exists) {
-            userName = userDoc.data()?.name || decodedToken.email || 'Unknown User';
+        try {
+            decodedToken = await adminAuth.verifyIdToken(token);
+            const userDoc = await adminDB.collection('users').doc(decodedToken.uid).get();
+            if(userDoc.exists) {
+                userName = userDoc.data()?.name || decodedToken.email || 'Unknown User';
+            }
+        } catch (error) {
+            console.warn("Could not verify token for logging, proceeding as Anonymous.", error);
         }
     }
     
