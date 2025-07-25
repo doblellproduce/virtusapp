@@ -1,3 +1,4 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -23,8 +24,8 @@ const nextConfig = {
         "process": require.resolve("process/browser"),
         "zlib": require.resolve("browserify-zlib"),
         "stream": require.resolve("stream-browserify"),
-        "util": require.resolve("util/"),
-        "assert": require.resolve("assert/"),
+        "util": false,
+        "assert": false,
       };
       
       // The ProvidePlugin makes a module available as a variable in every module.
