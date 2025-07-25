@@ -1,18 +1,51 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow public read access to vehicles for the home page showcase
+    // Vehicles can be read by anyone, but only changed by authenticated users.
     match /vehicles/{vehicleId} {
-      allow read: if true;
-      allow write: if request.auth != null; // Only authenticated users can write/edit/delete
+      allow get, list: if true;
+      allow create, update, delete: if request.auth != null;
     }
 
-    // Secure all other collections by default.
-    // This requires a user to be authenticated to access any other data.
-    match /{document=**} {
+    // All other documents in any other collection require the user to be authenticated.
+    match /{path=**}/_/{document=**} {
+       allow read, write: if request.auth != null;
+    }
+
+    // Explicitly secure top-level collections by default
+    match /users/{userId} {
       allow read, write: if request.auth != null;
+    }
+    match /reservations/{resId} {
+      allow read, write: if request.auth != null;
+    }
+    match /customers/{custId} {
+      allow read, write: if request.auth != null;
+    }
+     match /invoices/{invId} {
+      allow read, write: if request.auth != null;
+    }
+     match /expenses/{expId} {
+      allow read, write: if request.auth != null;
+    }
+     match /documents/{docId} {
+      allow read, write: if request.auth != null;
+    }
+     match /contracts/{conId} {
+      allow read, write: if request.auth != null;
+    }
+     match /maintenanceLogs/{logId} {
+      allow read, write: if request.auth != null;
+    }
+     match /reviews/{revId} {
+      allow read, write: if request.auth != null;
+    }
+     match /activityLogs/{logId} {
+      allow write: if request.auth != null; // Logs should be write-only for clients
+      allow read: if request.auth != null; // But readable for admins
     }
   }
 }
