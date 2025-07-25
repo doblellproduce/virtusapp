@@ -9,13 +9,31 @@ import {
     signInWithEmailAndPassword,
     type User,
 } from 'firebase/auth';
-import { doc, onSnapshot, addDoc, collection } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile, UserRole, ActivityLog } from '@/lib/types';
 import { auth, db, storage } from '@/lib/firebase/client'; 
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from "firebase/storage";
 import type { Auth } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+
+// Define a standalone logActivity function that can be called from anywhere
+export const logActivity = async (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => {
+    try {
+        // This function will now send a request to our new API route
+        // instead of trying to write to Firestore from the client.
+        await fetch('/api/log', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ action, entityType, entityId, details }),
+        });
+    } catch (error) {
+        console.error("Error logging activity via API:", error);
+    }
+};
+
 
 interface AuthContextType {
   user: User | null;
@@ -69,8 +87,6 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
                   setUserProfile(profileData);
                   setRole(profileData.role || 'Client');
                 } else {
-                  // This can happen for new client-side sign-ups before the doc is created
-                  // The API route now handles creating the doc, so we just wait for the snapshot.
                   setUserProfile(null); 
                   setRole('Client');
                 }
@@ -119,22 +135,6 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
     return sendPasswordResetEmail(auth, email);
   };
   
-  const logActivity = useCallback(async (action: ActivityLog['action'], entityType: ActivityLog['entityType'], entityId: string, details: string) => {
-    if (!db) return;
-    try {
-        await addDoc(collection(db, 'activityLogs'), {
-            timestamp: new Date().toISOString(),
-            user: userProfile?.name || user?.email || 'System',
-            action,
-            entityType,
-            entityId,
-            details,
-        });
-    } catch (error) {
-        console.error("Error logging activity:", error);
-    }
-  }, [db, user, userProfile]);
-
   return (
     <AuthContext.Provider value={{
         loading,
