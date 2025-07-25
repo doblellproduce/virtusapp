@@ -22,13 +22,22 @@ const nextConfig = {
         "process": require.resolve("process/browser"),
         "zlib": require.resolve("browserify-zlib"),
         "stream": require.resolve("stream-browserify"),
+        "util": require.resolve("util/"),
+        "assert": require.resolve("assert/"),
       };
     }
+     // Provide 'process' to the browser environment
     config.plugins.push(
       new (require('webpack').ProvidePlugin)({
         process: "process/browser",
       })
     );
+    
+    // Ignore firebase-admin in client-side bundles
+    if (!isServer) {
+      config.externals.push('firebase-admin');
+    }
+
     return config;
   },
 };
