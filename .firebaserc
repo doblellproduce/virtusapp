@@ -1,7 +1,8 @@
 {
   "projects": {
     "default": "virtus-vehicle-vision",
-    "virtusaap": "virtus-vehicle-vision"
+    "virtusaap": "virtus-vehicle-vision",
+    "virtusapp": "virtus-vehicle-vision"
   },
   "targets": {},
   "etags": {}
