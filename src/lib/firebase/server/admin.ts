@@ -6,39 +6,52 @@ import { getStorage as getAdminStorage, Storage } from 'firebase-admin/storage';
 
 let adminApp: App;
 
+// Use a singleton pattern to initialize the app only once.
 if (!getApps().length) {
     const privateKey = process.env.FIREBASE_PRIVATE_KEY;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-    if (!privateKey || !clientEmail || !projectId) {
-        throw new Error("Firebase Admin credentials are not fully set in environment variables.");
+    // Check if all required environment variables are present.
+    if (privateKey && clientEmail && projectId) {
+        adminApp = initializeApp({
+            credential: cert({
+                projectId,
+                clientEmail,
+                privateKey: privateKey.replace(/\\n/g, '\n'), // Ensure newlines are correctly formatted.
+            }),
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        });
+    } else {
+        // This warning is crucial for debugging in production environments like Vercel.
+        console.warn(
+            "Firebase Admin credentials are not fully set in environment variables. " +
+            "Server-side Firebase functionality will be disabled. " +
+            "Ensure FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set."
+        );
     }
-
-    adminApp = initializeApp({
-        credential: cert({
-            projectId,
-            clientEmail,
-            privateKey: privateKey.replace(/\\n/g, '\n'),
-        }),
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    });
 } else {
     adminApp = getApps()[0];
 }
 
-const db = getFirestore(adminApp);
-const auth = getAdminAuth(adminApp);
-const storage = getAdminStorage(adminApp);
+
+// These functions will now check if the adminApp was successfully initialized.
+// If not, they will throw a clear error, which can be caught by our server actions.
+function getInitializedAdminApp(): App {
+    if (!adminApp) {
+        throw new Error("Firebase Admin SDK is not initialized. Check server logs for credential errors.");
+    }
+    return adminApp;
+}
 
 export function getDb(): Firestore {
-    return db;
+    return getFirestore(getInitializedAdminApp());
 }
 
 export function getAuth(): Auth {
-    return auth;
+    return getAdminAuth(getInitializedAdminApp());
 }
 
 export function getStorage(): Storage {
-    return storage;
+    return getAdminStorage(getInitializedAdminApp());
 }

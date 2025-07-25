@@ -10,24 +10,26 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const tokenCookie = request.cookies.get('firebaseIdToken');
 
-    const isPublicPage = ['/', '/login', '/vehiculo'].some(p => pathname.startsWith(p) || p === pathname);
-    
-    // Allow public pages and API routes to be accessed
+    const isPublicPage = ['/', '/login', '/vehiculo/'].some(p => pathname.startsWith(p));
+    const isAdminAsset = ['/dashboard', '/calendar', '/customers', '/documents', '/expenses', '/invoices', '/logs', '/maintenance', '/reports', '/reservations', '/reviews', '/smart-reply', '/users', '/vehicles', '/client-dashboard'].some(p => pathname.startsWith(p));
+
+    // Allow public pages and API routes to be accessed without checks
     if (isPublicPage || pathname.startsWith('/api/')) {
         return NextResponse.next();
     }
     
-    const loginUrl = new URL('/login', request.url);
-    
-    // If there's no token and the path is protected, redirect to login
-    if (!tokenCookie?.value) {
-        console.log(`No token found for protected route: ${pathname}. Redirecting to login.`);
-        loginUrl.searchParams.set('redirectedFrom', pathname);
-        return NextResponse.redirect(loginUrl);
+    // If the path is an admin/protected route, check for a token
+    if (isAdminAsset) {
+      if (!tokenCookie?.value) {
+          console.log(`No token found for protected route: ${pathname}. Redirecting to login.`);
+          const loginUrl = new URL('/login', request.url);
+          loginUrl.searchParams.set('redirectedFrom', pathname);
+          return NextResponse.redirect(loginUrl);
+      }
     }
 
-    // Token exists, let the request proceed. 
-    // Server-side logic in pages/api routes will handle the actual verification.
+    // Token exists, or it's not a route we need to protect at the middleware level.
+    // Let the request proceed. Server-side logic will handle verification if needed.
     return NextResponse.next();
 }
 

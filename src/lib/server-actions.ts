@@ -75,8 +75,8 @@ export async function getDashboardData() {
       recentInvoices: allInvoices.slice(0, 5),
       chartData: chartData,
     };
-  } catch (error) {
-    console.error("Error fetching dashboard data on server:", error);
+  } catch (error: any) {
+    console.error("Error fetching dashboard data on server:", error.message);
     // Return empty/default data on error to prevent crashing the page
     return {
       stats: { totalRevenue: 0, activeRentals: 0, availableVehicles: 0, vehiclesInMaintenance: 0 },
@@ -98,10 +98,10 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         const vehiclesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
         return { vehicles: vehiclesData };
     } catch (err: any) {
-        console.error("Error in getVehiclesForHomePage:", err);
-        // Provide a more user-friendly error message
-        if (err.code === 'permission-denied') {
-            return { vehicles: [], error: "No se pudo cargar la flota. Verifique los permisos de la base de datos." };
+        console.error("Error in getVehiclesForHomePage:", err.message);
+        // This will now catch the "Firebase Admin SDK is not initialized" error and show a user-friendly message.
+        if (err.message.includes("Firebase Admin SDK is not initialized")) {
+            return { vehicles: [], error: "No se pudo conectar con la base de datos. Verifique las credenciales del servidor en el entorno de producción." };
         }
         return { vehicles: [], error: "Ocurrió un error inesperado al cargar los vehículos." };
     }
