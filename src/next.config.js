@@ -1,4 +1,3 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -25,14 +24,15 @@ const nextConfig = {
         "util": require.resolve("util/"),
         "assert": require.resolve("assert/"),
       };
+      
+      // Provide 'process' to the browser environment
+      config.plugins.push(
+        new (require('webpack').ProvidePlugin)({
+          process: "process/browser",
+        })
+      );
     }
-     // Provide 'process' to the browser environment
-    config.plugins.push(
-      new (require('webpack').ProvidePlugin)({
-        process: "process/browser",
-      })
-    );
-    
+     
     // Ignore firebase-admin in client-side bundles
     if (!isServer) {
       config.externals.push('firebase-admin');
