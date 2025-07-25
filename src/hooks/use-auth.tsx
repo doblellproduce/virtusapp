@@ -87,13 +87,15 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
                   setUserProfile(profileData);
                   setRole(profileData.role || 'Client');
                 } else {
+                  // This can happen if the user exists in Auth but not in Firestore yet.
+                  // e.g., a new client signing up.
                   setUserProfile(null); 
                   setRole('Client');
                 }
                 setLoading(false);
             }, (error) => {
-                console.error("Firestore snapshot error:", error);
-                setUser(null);
+                console.error("Firestore snapshot error on user doc:", error);
+                // Don't sign the user out, but clear profile state
                 setUserProfile(null);
                 setRole(null);
                 setLoading(false);
@@ -102,10 +104,7 @@ const AuthProviderContent = ({ children }: { children: React.ReactNode }) => {
         } catch (error) {
             console.error("Auth action failed, logging out:", error);
             await signOut(auth);
-            setUser(null);
-            setUserProfile(null);
-            setRole(null);
-            setLoading(false);
+            // State will be cleared by the onAuthStateChanged listener firing again with `null`
         }
       } else {
         setUser(null);

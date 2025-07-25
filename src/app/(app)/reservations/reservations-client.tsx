@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -42,6 +42,7 @@ export default function ReservationsClient() {
     const [reservations, setReservations] = React.useState<Reservation[]>([]);
     const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
     const [customers, setCustomers] = React.useState<Customer[]>([]);
+    const [loading, setLoading] = React.useState(true);
     const [open, setOpen] = React.useState(false);
     const [editingReservation, setEditingReservation] = React.useState<Reservation | null>(null);
     const [reservationData, setReservationData] = React.useState<NewReservation>(emptyReservation);
@@ -54,38 +55,32 @@ export default function ReservationsClient() {
 
     React.useEffect(() => {
         if (!db || !user) return;
+        setLoading(true);
 
         const unsubVehicles = onSnapshot(collection(db, 'vehicles'), (snapshot) => {
             const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
             setVehicles(vehiclesData);
+        }, (error) => {
+            console.error("Error fetching vehicles:", error);
+            toast({ variant: 'destructive', title: 'Error fetching vehicles' });
         });
+
         const unsubReservations = onSnapshot(collection(db, 'reservations'), (snapshot) => {
             const reservationsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
             setReservations(reservationsData);
+            if(loading) setLoading(false); // Set loading to false after first fetch
         }, (error) => {
             console.error("Error fetching reservations: ", error);
-            if (error.message.includes('permission-denied')) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Permission Denied',
-                    description: 'You may not have permission to view reservations. Please contact an administrator.',
-                    duration: 7000,
-                });
-            }
+             toast({ variant: 'destructive', title: 'Error fetching reservations' });
+            setLoading(false);
         });
+
         const unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
             const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
             setCustomers(customersData);
         }, (error) => {
              console.error("Error fetching customers: ", error);
-             if (error.message.includes('permission-denied')) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Permission Denied',
-                    description: 'You do not have permission to view customers. Please contact an administrator.',
-                    duration: 7000,
-                });
-            }
+             toast({ variant: 'destructive', title: 'Error fetching customers' });
         });
 
         return () => {
@@ -401,6 +396,18 @@ export default function ReservationsClient() {
         });
     }, [reservations, searchTerm]);
     
+    if (loading) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-2 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                    <p className="text-lg font-semibold">Loading Reservations...</p>
+                    <p className="text-sm text-muted-foreground">Please wait while we fetch the data.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
@@ -621,3 +628,4 @@ export default function ReservationsClient() {
     
 
     
+
