@@ -40,7 +40,6 @@ const nextConfig = {
     
     return config;
   },
-  instrumentationHook: false,
 };
 
 module.exports = nextConfig;
