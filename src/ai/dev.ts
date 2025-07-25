@@ -3,7 +3,7 @@ import { config } from 'dotenv';
 config({ path: '.env' });
 
 import { googleAI } from '@genkit-ai/googleai';
-import { genkit,  } from 'genkit';
+import { genkit } from 'genkit';
 
 // This file is for the Genkit development server.
 // We dynamically import the flows within an async function
