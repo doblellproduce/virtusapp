@@ -22,8 +22,8 @@ const nextConfig = {
         "process": require.resolve("process/browser"),
         "zlib": require.resolve("browserify-zlib"),
         "stream": require.resolve("stream-browserify"),
-        "assert": require.resolve("assert/"),
         "util": require.resolve("util/"),
+        "assert": require.resolve("assert/"),
       };
     }
      // Provide 'process' to the browser environment
