@@ -22,36 +22,29 @@ export const initialCustomers: Omit<Customer, 'id'>[] = [
 // --- RESERVATIONS ---
 // Note: Use placeholder IDs that correspond to the vehicles and customers above.
 export const initialReservations: Reservation[] = [
-    { id: 'RES-001', customerId: 'CUST-001', customerName: 'Liam Johnson', vehicleId: 'some-firestore-id-3', vehicle: 'Hyundai Accent', pickupDate: '2024-07-25', dropoffDate: '2024-07-28', status: 'Completed', agent: 'Admin User', totalCost: 250.00 },
+    { id: 'RES-001', customerId: 'CUST-001', customerName: 'Liam Johnson', vehicleId: 'some-firestore-id-3', vehicle: 'Hyundai Accent', pickupDate: '2024-07-25', dropoffDate: '2024-07-28', status: 'Completed', agent: 'Luis Mañon', totalCost: 250.00 },
     { id: 'RES-002', customerId: 'CUST-002', customerName: 'Olivia Smith', vehicleId: 'some-firestore-id-5', vehicle: 'Chevrolet Tracker', pickupDate: '2024-07-26', dropoffDate: '2024-08-02', status: 'Active', agent: 'Sarah Johnson', totalCost: 600.00 },
-    { id: 'RES-003', customerId: 'CUST-003', customerName: 'Noah Williams', vehicleId: 'some-firestore-id-1', vehicle: 'Toyota Raize', pickupDate: '2024-08-10', dropoffDate: '2024-08-15', status: 'Upcoming', agent: 'Admin User', totalCost: 450.00 },
+    { id: 'RES-003', customerId: 'CUST-003', customerName: 'Noah Williams', vehicleId: 'some-firestore-id-1', vehicle: 'Toyota Raize', pickupDate: '2024-08-10', dropoffDate: '2024-08-15', status: 'Upcoming', agent: 'Luis Mañon', totalCost: 450.00 },
 ];
 
 // --- INVOICES ---
 export const initialInvoices: Omit<Invoice, 'id'>[] = [
-    { customer: 'Liam Johnson', date: '2024-07-28', amount: '250.00', status: 'Paid', createdBy: 'Admin User', paymentMethod: 'Credit Card', reservationId: 'RES-001' },
+    { customer: 'Liam Johnson', date: '2024-07-28', amount: '250.00', status: 'Paid', createdBy: 'Luis Mañon', paymentMethod: 'Credit Card', reservationId: 'RES-001' },
     { customer: 'Olivia Smith', date: '2024-08-02', amount: '600.00', status: 'Paid', createdBy: 'Sarah Johnson', paymentMethod: 'Bank Transfer', reservationId: 'RES-002' },
-    { customer: 'Noah Williams', date: '2024-08-10', amount: '450.00', status: 'Draft', createdBy: 'Admin User', paymentMethod: 'N/A', reservationId: 'RES-003' },
-];
-
-// --- USERS (for reference) ---
-export const initialUsers: Omit<UserProfile, 'id'>[] = [
-    { name: 'Luis Mañon', email: 'soypromord@gmail.com', role: 'Admin' },
-    { name: 'Sarah Johnson', email: 'sarah.j@example.com', role: 'Supervisor' },
-    { name: 'Mark Williams', email: 'mark.w@example.com', role: 'Secretary' },
+    { customer: 'Noah Williams', date: '2024-08-10', amount: '450.00', status: 'Draft', createdBy: 'Luis Mañon', paymentMethod: 'N/A', reservationId: 'RES-003' },
 ];
 
 // --- EXPENSES ---
 export const initialExpenses: Omit<Expense, 'id'>[] = [
-    { description: 'Vehicle Maintenance - Toyota Raize', category: 'Maintenance', amount: '150.00', date: '2024-07-20', status: 'Paid', createdBy: 'Admin User', vehicleId: 'some-firestore-id-4' },
-    { description: 'Office Rent - August', category: 'Utilities', amount: '1200.00', date: '2024-08-01', status: 'Paid', createdBy: 'Admin User' },
+    { description: 'Vehicle Maintenance - Toyota Raize', category: 'Maintenance', amount: '150.00', date: '2024-07-20', status: 'Paid', createdBy: 'Luis Mañon', vehicleId: 'some-firestore-id-4' },
+    { description: 'Office Rent - August', category: 'Utilities', amount: '1200.00', date: '2024-08-01', status: 'Paid', createdBy: 'Luis Mañon' },
     { description: 'Fuel for fleet', category: 'Fuel', amount: '300.00', date: '2024-07-29', status: 'Paid', createdBy: 'Sarah Johnson' },
 ];
 
 // --- MAINTENANCE LOGS ---
 export const initialMaintenanceLogs: Omit<MaintenanceLog, 'id'>[] = [
-    { vehicleId: 'some-firestore-id-4', vehicleName: 'Toyota Raize', date: '2023-12-15', serviceType: 'Oil Change', cost: '80.00', notes: 'Replaced oil and filter.', createdBy: 'Admin User' },
-    { vehicleId: 'some-firestore-id-6', vehicleName: 'Chevrolet Captiva', date: '2024-01-30', serviceType: 'Brake Service', cost: '250.00', notes: 'Replaced front brake pads and rotors.', createdBy: 'Admin User' },
+    { vehicleId: 'some-firestore-id-4', vehicleName: 'Toyota Raize', date: '2023-12-15', serviceType: 'Oil Change', cost: '80.00', notes: 'Replaced oil and filter.', createdBy: 'Luis Mañon' },
+    { vehicleId: 'some-firestore-id-6', vehicleName: 'Chevrolet Captiva', date: '2024-01-30', serviceType: 'Brake Service', cost: '250.00', notes: 'Replaced front brake pads and rotors.', createdBy: 'Luis Mañon' },
 ];
 
 // --- REVIEWS ---
