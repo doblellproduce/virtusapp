@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: (config, { isServer }) => {
-    // Exclude firebase-admin from client-side bundles
     if (!isServer) {
+      // Excluir 'firebase-admin' del paquete del cliente
       config.externals.push('firebase-admin');
     }
 
