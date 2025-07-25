@@ -15,7 +15,8 @@ import {Label} from '@/components/ui/label';
 import {Textarea} from '@/components/ui/textarea';
 import {Loader2, Wand2, Copy} from 'lucide-react';
 import {useToast} from '@/hooks/use-toast';
-import { generateSmartReply, SmartReplyInput } from '@/ai/flows/smart-reply-tool';
+import { generateSmartReply } from '@/ai/flows/smart-reply-tool';
+import type { SmartReplyInput } from '@/ai/flows/smart-reply-tool';
 
 export default function SmartReplyPage() {
   const [query, setQuery] = useState('');

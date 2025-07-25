@@ -1,4 +1,3 @@
-// This file is machine-generated - edit at your own risk!
 
 'use server';
 
@@ -13,7 +12,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const SmartReplyInputSchema = z.object({
+export const SmartReplyInputSchema = z.object({
   query: z
     .string()
     .describe(
@@ -23,14 +22,11 @@ const SmartReplyInputSchema = z.object({
 });
 export type SmartReplyInput = z.infer<typeof SmartReplyInputSchema>;
 
-const SmartReplyOutputSchema = z.object({
+export const SmartReplyOutputSchema = z.object({
   reply: z.string().describe('The generated smart reply.'),
 });
 export type SmartReplyOutput = z.infer<typeof SmartReplyOutputSchema>;
 
-export async function generateSmartReply(input: SmartReplyInput): Promise<SmartReplyOutput> {
-  return smartReplyFlow(input);
-}
 
 const prompt = ai.definePrompt({
   name: 'smartReplyPrompt',
@@ -50,3 +46,7 @@ const smartReplyFlow = ai.defineFlow(
     return output!;
   }
 );
+
+export async function generateSmartReply(input: SmartReplyInput): Promise<SmartReplyOutput> {
+  return smartReplyFlow(input);
+}
