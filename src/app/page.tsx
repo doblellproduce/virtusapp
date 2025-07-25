@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Car, Gauge, GitBranch, Loader2, LogIn, Users } from 'lucide-react';
 import type { Vehicle } from '@/lib/types';
-import { getVehiclesForHomePage } from '@/lib/firebase/server/admin';
+import { getVehiclesForHomePage } from '@/lib/server-actions';
 import { Suspense } from 'react';
 
 
