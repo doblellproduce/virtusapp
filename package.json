@@ -2,6 +2,7 @@
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
+  "description": "A vehicle rental management system built with Next.js and Firebase.",
   "scripts": {
     "dev": "next dev",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
