@@ -14,8 +14,10 @@ const nextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
+    // This webpack configuration is only applied to the client-side bundle.
     if (!isServer) {
-      // This is the correct way to polyfill Node.js built-ins for the client-side bundle.
+      // Provide fallbacks for Node.js built-in modules that are used by some of the libraries.
+      // This tells Webpack to use browser-compatible versions of these modules.
       config.resolve.fallback = {
         ...config.resolve.fallback,
         "process": require.resolve("process/browser"),
