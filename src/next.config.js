@@ -26,8 +26,9 @@ const nextConfig = {
       };
       
       // Provide 'process' to the browser environment
+      const webpack = require('webpack');
       config.plugins.push(
-        new (require('webpack').ProvidePlugin)({
+        new webpack.ProvidePlugin({
           process: "process/browser",
         })
       );
