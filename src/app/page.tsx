@@ -1,7 +1,5 @@
 
 
-'use client';
-
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -10,8 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Car, Gauge, GitBranch, Loader2, LogIn, Users } from 'lucide-react';
 import type { Vehicle } from '@/lib/types';
-import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { getVehiclesForHomePage } from '@/lib/server-actions';
+import { Suspense } from 'react';
 
 const Logo = () => (
     <div className="flex items-center gap-2 text-primary">
@@ -60,36 +58,33 @@ function VehicleCard({ vehicle, priority }: { vehicle: Vehicle, priority: boolea
     );
 }
 
+async function FleetList() {
+    const { vehicles, error } = await getVehiclesForHomePage();
+
+    if (error) {
+        return (
+            <Card className="bg-destructive/10 border-destructive text-destructive-foreground p-4 text-center col-span-1 md:col-span-2 lg:col-span-3">
+                <p className="font-semibold">Error al Cargar</p>
+                <p>{error}</p>
+            </Card>
+        );
+    }
+    
+    if (vehicles.length === 0) {
+       return <p className="text-center text-muted-foreground col-span-1 md:col-span-2 lg:col-span-3">No hay vehículos disponibles en este momento.</p>;
+    }
+
+    return (
+        <>
+            {vehicles.map((vehicle, index) => (
+                <VehicleCard key={vehicle.id} vehicle={vehicle} priority={index < 3}/>
+            ))}
+        </>
+    );
+}
+
 
 export default function HomePage() {
-  const { db } = useAuth();
-  const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!db) return;
-
-    const fetchVehicles = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const q = query(collection(db, 'vehicles'), where('status', 'in', ['Available', 'Rented']));
-            const querySnapshot = await getDocs(q);
-            const vehiclesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-            setVehicles(vehiclesData);
-        } catch (err) {
-            console.error("Firestore Error:", err);
-            setError("No se pudo cargar la flota. Es posible que no tengamos permisos para acceder a los datos.");
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    fetchVehicles();
-  }, [db]);
-
-
   return (
     <div className="bg-background text-foreground min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
@@ -111,22 +106,31 @@ export default function HomePage() {
       <main className="flex-grow">
         <section id="fleet-section" className="container mx-auto py-12 px-4">
             <h2 className="text-3xl font-bold text-center mb-8">Nuestra Flota</h2>
-            {loading ? (
-                <div className="flex justify-center">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                </div>
-            ) : error ? (
-                 <Card className="bg-destructive/10 border-destructive text-destructive-foreground p-4 text-center">
-                    <p className="font-semibold">Error al Cargar</p>
-                    <p>{error}</p>
-                </Card>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {vehicles.map((vehicle, index) => (
-                        <VehicleCard key={vehicle.id} vehicle={vehicle} priority={index === 0}/>
-                    ))}
-                </div>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Suspense fallback={
+                    <>
+                        {[...Array(3)].map((_, i) => (
+                             <Card key={i} className="animate-pulse">
+                                <div className="relative aspect-video bg-muted rounded-t-lg"></div>
+                                <CardContent className="p-4 space-y-3">
+                                    <div className="h-4 bg-muted rounded w-1/4"></div>
+                                    <div className="h-6 bg-muted rounded w-3/4"></div>
+                                    <div className="flex justify-between border-t pt-3 mt-4">
+                                        <div className="h-4 bg-muted rounded w-1/6"></div>
+                                        <div className="h-4 bg-muted rounded w-1/6"></div>
+                                        <div className="h-4 bg-muted rounded w-1/6"></div>
+                                    </div>
+                                    <div className="flex justify-end mt-4">
+                                        <div className="h-8 bg-muted rounded w-1/3"></div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </>
+                }>
+                    <FleetList />
+                </Suspense>
+            </div>
         </section>
       </main>
 

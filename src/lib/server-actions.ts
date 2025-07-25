@@ -86,3 +86,22 @@ export async function getDashboardData() {
     };
   }
 }
+
+export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], error?: string }> {
+    try {
+        const vehiclesQuery = adminDB.collection('vehicles').where('status', 'in', ['Available', 'Rented']);
+        const querySnapshot = await vehiclesQuery.get();
+        if (querySnapshot.empty) {
+            return { vehicles: [] };
+        }
+        const vehiclesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+        return { vehicles: vehiclesData };
+    } catch (err: any) {
+        console.error("Error in getVehiclesForHomePage:", err);
+        // Provide a more user-friendly error message
+        if (err.code === 'permission-denied') {
+            return { vehicles: [], error: "No se pudo cargar la flota. Verifique los permisos de la base de datos." };
+        }
+        return { vehicles: [], error: "Ocurrió un error inesperado al cargar los vehículos." };
+    }
+}
