@@ -15,6 +15,7 @@ import {Label} from '@/components/ui/label';
 import {Textarea} from '@/components/ui/textarea';
 import {Loader2, Wand2, Copy} from 'lucide-react';
 import {useToast} from '@/hooks/use-toast';
+import { generateSmartReply, SmartReplyInput } from '@/ai/flows/smart-reply-tool';
 
 export default function SmartReplyPage() {
   const [query, setQuery] = useState('');
@@ -29,19 +30,8 @@ export default function SmartReplyPage() {
     setError(null);
     setReply('');
     try {
-      const response = await fetch('/api/smart-reply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({query}),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate a reply.');
-      }
-
-      const result = await response.json();
+      const input: SmartReplyInput = { query };
+      const result = await generateSmartReply(input);
 
       if (result.reply) {
         setReply(result.reply);
