@@ -1,33 +1,36 @@
-
-import webpack from 'webpack';
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { isServer }) => {
-    // Agrega un polyfill para el módulo 'process' en el navegador
+  reactStrictMode: true,
+  webpack: (
+    config,
+    { isServer, webpack } // webpack is provided as an argument here
+  ) => {
     if (!isServer) {
+      // Resolve Node.js modules for browser environment
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        process: require.resolve('process/browser'),
-        zlib: require.resolve('browserify-zlib'),
         stream: require.resolve('stream-browserify'),
-        util: require.resolve('util'),
-        assert: require.resolve('assert'),
+        zlib: require.resolve('browserify-zlib'),
+        process: require.resolve('process/browser'),
+        util: require.resolve('util/'),
+        fs: false,
+        net: false,
+        tls: false,
       };
+    }
 
-      config.plugins.push(
-        new webpack.ProvidePlugin({
-          process: 'process/browser',
-        })
-      );
-    }
-    
-    // Excluir firebase-admin del paquete del cliente
-    if (!isServer) {
-      config.externals.push({
-        'firebase-admin': 'commonjs firebase-admin',
-      });
-    }
+    // This plugin makes the `process` variable available to modules
+    config.plugins.push(
+      new webpack.ProvidePlugin({
+        process: 'process/browser',
+      })
+    );
+
+    // Exclude firebase-admin from client-side bundles
+    config.externals.push({
+      'firebase-admin': 'commonjs firebase-admin',
+    });
+
 
     return config;
   },
