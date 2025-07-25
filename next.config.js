@@ -24,6 +24,7 @@ const nextConfig = {
         stream: require.resolve('stream-browserify'),
         zlib: require.resolve('browserify-zlib'),
         util: require.resolve('util/'),
+        process: require.resolve('process/browser'),
       };
 
        config.plugins = config.plugins || [];
