@@ -1,8 +1,9 @@
+
 'use server';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getAuth as getAdminAuth, Auth } from 'firebase-admin/auth';
+import { getAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { getStorage as getAdminStorage, Storage } from 'firebase-admin/storage';
+import { getStorage, Storage } from 'firebase-admin/storage';
 
 let adminApp: App;
 
