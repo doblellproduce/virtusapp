@@ -1,61 +1,18 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow public read access for the vehicle fleet to display on the homepage
+    // Allow public read-only access for the vehicle fleet to display on the homepage.
+    // Write access is restricted to authenticated users (managed through backend logic).
     match /vehicles/{vehicleId} {
       allow get, list: if true;
-      allow write: if request.auth != null; // Only authenticated users (admins) can write
+      allow write: if request.auth != null;
     }
 
-    // Secure all other collections by default
-    // Users can only read/write their own data, or admins can access everything
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /reservations/{resId} {
-       allow read, write: if request.auth != null;
-    }
-    
-    match /customers/{custId} {
-       allow read, write: if request.auth != null;
-    }
-
-    match /documents/{docId} {
-       allow read, write: if request.auth != null;
-    }
-    
-    match /contracts/{conId} {
-       allow read, write: if request.auth != null;
-    }
-
-    match /invoices/{invId} {
-       allow read, write: if request.auth != null;
-    }
-
-    match /expenses/{expId} {
-       allow read, write: if request.auth != null;
-    }
-
-    match /maintenanceLogs/{logId} {
-       allow read, write: if request.auth != null;
-    }
-
-    match /reviews/{revId} {
-       allow read, write: if request.auth != null;
-    }
-    
-    match /activityLogs/{logId} {
-      allow create: if true; // Allow logging from both client (via API) and server
-      allow read, update, delete: if request.auth != null; // Only admins can view/manage logs
-    }
-    
-    // Fallback rule for any other collection not specified
-    match /{document=**} {
-      allow read, write: if false;
+    // Secure all other collections by default.
+    // Only authenticated users can read or write data in other parts of the database.
+    match /{path=**}/documents/{documentId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
