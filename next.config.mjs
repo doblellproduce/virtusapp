@@ -1,17 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { isClient }) => {
-    if (isClient) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        process: require.resolve('process/browser'),
-        stream: require.resolve('stream-browserify'),
-      };
+  webpack: (config, { isServer }) => {
+    // Exclude firebase-admin from client-side bundles
+    if (!isServer) {
+      config.externals.push('firebase-admin');
     }
+
     return config;
   },
-  // No se necesita configuración de webpack personalizada aquí.
-  // El campo "browser" en package.json se encargará de excluir firebase-admin.
 };
 
-export default nextConfig;
+module.exports = nextConfig;
