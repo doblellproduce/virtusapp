@@ -1,25 +1,16 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Vehicles are public and can be read by anyone.
-    // Only authenticated users (employees) can create, update, or delete vehicles.
+    // Allow public read on vehicles, but only authenticated writes
     match /vehicles/{vehicleId} {
-      allow read: if true;
+      allow get, list: if true;
       allow write: if request.auth != null;
     }
-    
-    // Reviews can be read by anyone (once approved), but only created by authenticated users.
-    // Full management (update/delete) is restricted.
-    match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null; // Further restrictions can be added based on user role
-    }
 
-    // All other collections are private and require authentication for any access.
-    // This protects user data, reservations, invoices, etc.
+    // Default to private access for all other collections
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
