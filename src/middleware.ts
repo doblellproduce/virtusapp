@@ -36,6 +36,6 @@ export async function middleware(request: NextRequest) {
 // Matcher to apply the middleware to all paths except for static assets
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)',
   ],
 };
