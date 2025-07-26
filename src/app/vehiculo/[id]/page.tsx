@@ -5,6 +5,12 @@ import { getDb } from '@/lib/firebase/server/admin';
 import type { Vehicle } from '@/lib/types';
 import VehicleDetailClient from './vehicle-detail-client';
 
+type VehicleDetailPageProps = {
+    params: {
+        id: string;
+    };
+};
+
 async function getVehicleData(vehicleId: string): Promise<Vehicle | null> {
     try {
         const db = getDb();
@@ -22,7 +28,7 @@ async function getVehicleData(vehicleId: string): Promise<Vehicle | null> {
     }
 }
 
-export default async function VehicleDetailPage({ params }: { params: { id: string } }) {
+export default async function VehicleDetailPage({ params }: VehicleDetailPageProps) {
     const vehicle = await getVehicleData(params.id);
 
     if (!vehicle) {
