@@ -22,8 +22,7 @@ function initializeAdminApp(): App {
             const serviceAccount = {
                 projectId,
                 clientEmail,
-                // Vercel and other platforms automatically handle newlines, 
-                // but replacing them explicitly is a robust safeguard against format issues.
+                // Vercel and other platforms often escape newlines. This line ensures the private key is correctly formatted.
                 privateKey: privateKey.replace(/\\n/g, '\n'),
             };
             return initializeApp({
@@ -38,7 +37,7 @@ function initializeAdminApp(): App {
     
     // This is a common case in development or incomplete CI/CD setups.
     // Warn the developer but don't throw a fatal error.
-    console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side functionality (like session management) will be disabled.");
+    console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side functionality will be disabled.");
     // Return a dummy app object to prevent downstream crashes
     return {} as App;
 }
