@@ -22,7 +22,8 @@ function initializeAdminApp(): App {
             const serviceAccount = {
                 projectId,
                 clientEmail,
-                // Vercel and other platforms often escape newlines. This line ensures the private key is correctly formatted.
+                // Vercel and other platforms often escape newlines. 
+                // This line ensures the private key is correctly formatted by replacing '\\n' with '\n'.
                 privateKey: privateKey.replace(/\\n/g, '\n'),
             };
             return initializeApp({
