@@ -22,7 +22,8 @@ function initializeAdminApp(): App {
             const serviceAccount = {
                 projectId,
                 clientEmail,
-                // Vercel automatically handles newlines, but this is a safeguard.
+                // Vercel and other platforms automatically handle newlines, 
+                // but replacing them explicitly is a robust safeguard.
                 privateKey: privateKey.replace(/\\n/g, '\n'),
             };
             return initializeApp({
