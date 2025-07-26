@@ -85,7 +85,7 @@ export async function getDashboardData() {
       recentReservations: [],
       recentInvoices: [],
       chartData: [],
-      error: `Failed to fetch dashboard data: ${error.message}`
+      error: `Failed to fetch dashboard data. Details: ${error.message}`
     };
   }
 }
@@ -100,6 +100,7 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
             .get();
         
         if (vehiclesSnapshot.empty) {
+            console.log("No available vehicles found in the database.");
             return { vehicles: [] };
         }
         
