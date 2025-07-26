@@ -495,7 +495,7 @@ export default function ReservationsClient() {
                                                 
                                                 <DropdownMenuSeparator />
 
-                                                <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled' || res.status === 'Pending Signature'}>
+                                                <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled'}>
                                                     <FileText className="mr-2 h-4 w-4" />
                                                     Generate Invoice
                                                 </DropdownMenuItem>
@@ -628,4 +628,5 @@ export default function ReservationsClient() {
     
 
     
+
 
