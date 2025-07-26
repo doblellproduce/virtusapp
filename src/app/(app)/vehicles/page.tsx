@@ -20,6 +20,8 @@ import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from 'fireb
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from 'next/image';
 
+export const dynamic = 'force-dynamic';
+
 type NewVehicle = Omit<Vehicle, 'id' | 'imageUrls' | 'dataAiHint'>;
 
 const emptyVehicle: NewVehicle = {
