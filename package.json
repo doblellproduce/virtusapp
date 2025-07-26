@@ -1,7 +1,9 @@
+
 {
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "A vehicle rental management system built with Next.js and Firebase.",
   "scripts": {
     "dev": "next dev",
@@ -10,8 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "deploy:rules": "firebase deploy --only firestore:rules,storage:rules"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",
@@ -59,6 +60,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@opentelemetry/exporter-jaeger": "^1.25.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
