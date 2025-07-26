@@ -18,6 +18,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Explicitly check for missing variables to provide a clear error message.
+// This helps debug issues like the 400 Bad Request from Identity Toolkit.
+Object.entries(firebaseConfig).forEach(([key, value]) => {
+    if (!value) {
+        throw new Error(`Firebase client configuration error: Missing environment variable NEXT_PUBLIC_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`);
+    }
+});
+
 
 // Initialize Firebase on the client-side
 let app: FirebaseApp;
