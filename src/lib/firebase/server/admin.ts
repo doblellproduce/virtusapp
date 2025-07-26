@@ -22,6 +22,7 @@ function initializeAdminApp(): App {
             const serviceAccount = {
                 projectId,
                 clientEmail,
+                // Vercel automatically handles newlines, but this is a safeguard.
                 privateKey: privateKey.replace(/\\n/g, '\n'),
             };
             return initializeApp({
@@ -31,17 +32,16 @@ function initializeAdminApp(): App {
         } catch (error: any) {
             // Log a more descriptive error but don't crash the server.
             console.error("Firebase Admin SDK Initialization Error:", "Could not initialize Firebase Admin SDK. This is likely due to malformed credentials. Server-side functionality will be limited.", error.message);
+            // We throw here because server functions that depend on this will fail anyway.
+            // This makes it clear in the logs that the app is misconfigured.
+            throw new Error("Firebase Admin SDK could not be initialized. Check server logs for details.");
         }
     } else {
         // This is a common case in development or incomplete CI/CD setups.
         // Warn the developer but don't throw a fatal error.
         console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side functionality (like session management) will be disabled.");
+        throw new Error("Firebase Admin credentials are not fully set.");
     }
-    
-    // If initialization fails or creds are missing, we fall back to a "no-op" or default app state if possible,
-    // but in this case, we must acknowledge that server features requiring auth will fail.
-    // We throw here to make it clear in logs that the app is misconfigured.
-    throw new Error("Firebase Admin SDK could not be initialized. Check server logs for details.");
 }
 
 function getAdminApp(): App {
@@ -57,14 +57,32 @@ function getAdminApp(): App {
     return adminApp;
 }
 
+// Defensive getters: These functions will attempt to get the service, but will fail gracefully
+// if the admin app itself could not be initialized.
+
 export function getDb(): Firestore {
-    return getFirestore(getAdminApp());
+    try {
+        return getFirestore(getAdminApp());
+    } catch (error) {
+        console.error("Failed to get Firestore instance. Admin App might not be initialized.");
+        throw error;
+    }
 }
 
 export function getAuth(): Auth {
-    return getAdminAuth(getAdminApp());
+    try {
+        return getAdminAuth(getAdminApp());
+    } catch (error) {
+        console.error("Failed to get Auth instance. Admin App might not be initialized.");
+        throw error;
+    }
 }
 
 export function getStorage(): Storage {
-    return getAdminStorage(getAdminApp());
+    try {
+        return getAdminStorage(getAdminApp());
+    } catch (error) {
+        console.error("Failed to get Storage instance. Admin App might not be initialized.");
+        throw error;
+    }
 }
