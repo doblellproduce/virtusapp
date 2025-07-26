@@ -29,20 +29,31 @@ function initializeAdminApp(): App {
                 storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
             }, 'firebase-admin-app'); // Name the app to prevent conflicts
         } catch (error: any) {
-            console.error("Firebase Admin SDK Initialization Error:", error.message);
-            // Throw a more specific error to be caught by server actions
-            throw new Error(`Firebase Admin SDK Initialization Failed: ${error.message}`);
+            // Log a more descriptive error but don't crash the server.
+            console.error("Firebase Admin SDK Initialization Error:", "Could not initialize Firebase Admin SDK. This is likely due to malformed credentials. Server-side functionality will be limited.", error.message);
         }
     } else {
-        // This is a critical configuration error.
-        console.error("Firebase Admin credentials are not fully set in environment variables.");
-        throw new Error("Firebase Admin credentials are not fully set. Ensure FIREBASE_PRIVATE_KEY and FIREBASE_CLIENT_EMAIL are configured in your Vercel project settings.");
+        // This is a common case in development or incomplete CI/CD setups.
+        // Warn the developer but don't throw a fatal error.
+        console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side functionality (like session management) will be disabled.");
     }
+    
+    // If initialization fails or creds are missing, we fall back to a "no-op" or default app state if possible,
+    // but in this case, we must acknowledge that server features requiring auth will fail.
+    // We throw here to make it clear in logs that the app is misconfigured.
+    // A less strict approach might return a mock/dummy app, but that can hide configuration problems.
+    throw new Error("Firebase Admin SDK could not be initialized. Check server logs for details.");
 }
 
 function getAdminApp(): App {
     if (!adminApp) {
-        adminApp = initializeAdminApp();
+        try {
+            adminApp = initializeAdminApp();
+        } catch (error) {
+             console.error("Critical: Could not retrieve Firebase Admin App instance.", error);
+             // Re-throw so that calling functions know initialization failed.
+             throw error;
+        }
     }
     return adminApp;
 }
