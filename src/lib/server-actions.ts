@@ -110,15 +110,9 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         console.error("Error fetching vehicles for homepage:", err.message);
         // Fallback to static data if Firestore fails, ensuring the homepage still loads.
         // This is a last resort to keep the page online. The root cause should be fixed (credentials, permissions, etc.).
-        const fallbackVehicles = initialVehicles
-            .filter(v => v.status === 'Available')
-            .map((v, i) => ({
-                ...v,
-                id: `static-vehicle-${i}`
-            })) as Vehicle[];
         
         return { 
-            vehicles: [], // Return empty array to show the "No vehicles" message, which is more accurate than showing stale data.
+            vehicles: [], 
             error: "No se pudo conectar a la base de datos para obtener la flota actualizada. Por favor, intente más tarde." 
         };
     }
