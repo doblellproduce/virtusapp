@@ -32,6 +32,7 @@ function initializeAdminApp(): App {
         } catch (error: any) {
             // Log a more descriptive error but don't crash the server.
             console.error("Firebase Admin SDK Initialization Error:", "Could not initialize Firebase Admin SDK. This is likely due to malformed credentials.", error.message);
+            throw new Error("Admin App initialization failed due to malformed credentials.");
         }
     } 
     
@@ -39,7 +40,7 @@ function initializeAdminApp(): App {
     // Warn the developer but don't throw a fatal error.
     console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side functionality will be disabled.");
     // Return a dummy app object to prevent downstream crashes
-    return {} as App;
+    throw new Error("Admin App initialization failed because environment variables are not set.");
 }
 
 function getAdminApp(): App {
@@ -61,7 +62,6 @@ function getAdminApp(): App {
 export function getDb(): Firestore {
     try {
         const app = getAdminApp();
-        if (!app.name) throw new Error("Admin App not initialized");
         return getFirestore(app);
     } catch (error) {
         console.error("Failed to get Firestore instance. Admin App might not be initialized.");
@@ -72,7 +72,6 @@ export function getDb(): Firestore {
 export function getAuth(): Auth {
     try {
         const app = getAdminApp();
-        if (!app.name) throw new Error("Admin App not initialized");
         return getAdminAuth(app);
     } catch (error) {
         console.error("Failed to get Auth instance. Admin App might not be initialized.");
@@ -83,7 +82,6 @@ export function getAuth(): Auth {
 export function getStorage(): Storage {
     try {
         const app = getAdminApp();
-        if (!app.name) throw new Error("Admin App not initialized");
         return getAdminStorage(app);
     } catch (error) {
         console.error("Failed to get Storage instance. Admin App might not be initialized.");
