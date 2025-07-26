@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import VehicleDetailClient from './vehicle-detail-client';
 import { getVehicleData } from '@/lib/server-actions';
