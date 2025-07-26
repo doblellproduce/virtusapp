@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2, Loader2, Info } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2, Loader2, Info, FileSignature } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -23,6 +23,8 @@ import { CustomerCombobox } from '@/components/customer-combobox';
 import DepartureInspectionModal from '@/components/departure-inspection-modal';
 import { differenceInCalendarDays } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { generateContract } from '@/ai/flows/generate-contract-flow';
+import { generateDepartureChecklist } from '@/ai/flows/generate-departure-checklist-flow';
 
 type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection'>;
 
@@ -305,6 +307,55 @@ export default function ReservationsClient() {
             description: `Invoice ${newInvoiceId} for ${reservation.id} has been created/updated.`,
         });
     };
+
+    const handleGenerateContract = async (reservation: Reservation | null) => {
+        if (!reservation || !db || !storage) return;
+
+        toast({ title: 'Generating Contract...', description: 'Please wait a moment.' });
+
+        try {
+            const customer = customers.find(c => c.id === reservation.customerId);
+            const vehicle = vehicles.find(v => v.id === reservation.vehicleId);
+            if (!customer || !vehicle) {
+                throw new Error("Customer or vehicle data not found.");
+            }
+
+            const result = await generateContract({
+                customerName: customer.name,
+                customerIdOrPassport: customer.idOrPassport,
+                customerAddress: customer.address,
+                vehicleDescription: `${vehicle.make} ${vehicle.model}`,
+                vehiclePlate: vehicle.plate,
+                pickupDate: reservation.pickupDate,
+                dropoffDate: reservation.dropoffDate,
+                totalCost: reservation.totalCost || 0,
+                deductible: vehicle.deductible,
+            });
+
+            const blob = new Blob([result.contractText], { type: 'text/plain;charset=utf-8' });
+            const fileName = `Contract-${reservation.id}.txt`;
+            const fileRef = ref(storage, `contracts/${fileName}`);
+
+            await uploadBytes(fileRef, blob);
+            const fileUrl = await getDownloadURL(fileRef);
+
+            await addDoc(collection(db, 'documents'), {
+                customer: reservation.customerName,
+                type: 'Rental Agreement',
+                date: new Date().toISOString().split('T')[0],
+                fileUrl,
+                fileName,
+                status: 'Generated',
+                reservationId: reservation.id,
+            });
+
+            await logActivity('Create', 'Contract', reservation.id, 'Generated rental agreement.');
+            toast({ title: 'Contract Generated!', description: 'The rental agreement has been saved in Documents.' });
+        } catch (error) {
+            console.error("Error generating contract:", error);
+            toast({ variant: 'destructive', title: 'Contract Generation Failed', description: 'Could not generate the contract.' });
+        }
+    };
     
     const handleStartInspection = (reservation: Reservation | null, type: 'departure' | 'return') => {
         if (!reservation) return;
@@ -353,6 +404,37 @@ export default function ReservationsClient() {
                 });
                 await logActivity('Update', 'Reservation', inspectingReservation.id, 'Completed departure inspection.');
                 toast({ title: 'Inspection Complete', description: 'Vehicle departure inspection has been saved.' });
+
+                // Generate Departure Checklist
+                const vehicle = vehicles.find(v => v.id === inspectingReservation.vehicleId);
+                if (vehicle) {
+                    const checklistResult = await generateDepartureChecklist({
+                        customerName: inspectingReservation.customerName,
+                        vehicleDescription: `${vehicle.make} ${vehicle.model}`,
+                        vehiclePlate: vehicle.plate,
+                        pickupDate: inspectingReservation.pickupDate,
+                        mileage: data.mileage,
+                        fuelLevel: data.fuelLevel,
+                        notes: data.notes,
+                    });
+                    const blob = new Blob([checklistResult.checklistText], { type: 'text/plain;charset=utf-8' });
+                    const fileName = `Checklist-Salida-${inspectingReservation.id}.txt`;
+                    const fileRef = ref(storage, `checklists/${fileName}`);
+                    await uploadBytes(fileRef, blob);
+                    const fileUrl = await getDownloadURL(fileRef);
+
+                     await addDoc(collection(db, 'documents'), {
+                        customer: inspectingReservation.customerName,
+                        type: 'Departure Checklist',
+                        date: new Date().toISOString().split('T')[0],
+                        fileUrl,
+                        fileName,
+                        status: 'Generated',
+                        reservationId: inspectingReservation.id,
+                    });
+                     toast({ title: 'Checklist de Salida Generado', description: 'El documento ha sido guardado.' });
+                }
+
             } else {
                  await updateDoc(resRef, {
                     returnInspection: inspectionData,
@@ -509,6 +591,10 @@ export default function ReservationsClient() {
                                                     
                                                     <DropdownMenuSeparator />
 
+                                                    <DropdownMenuItem onClick={() => handleGenerateContract(res)} disabled={!res || res.status === 'Cancelled'}>
+                                                        <FileSignature className="mr-2 h-4 w-4" />
+                                                        Generate Contract
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled'}>
                                                         <FileText className="mr-2 h-4 w-4" />
                                                         Generate Invoice

@@ -9,6 +9,8 @@ import {genkit} from 'genkit';
 // to prevent Next.js from trying to bundle server-side code.
 async function start() {
   await import('./flows/smart-reply-tool.js');
+  await import('./flows/generate-contract-flow.js');
+  await import('./flows/generate-departure-checklist-flow.js');
 
   // Configure Genkit with the server-side plugin here
   genkit({

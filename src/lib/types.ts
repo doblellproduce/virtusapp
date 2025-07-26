@@ -1,5 +1,6 @@
 
 
+
 export type UserRole = 'Admin' | 'Supervisor' | 'Secretary' | 'Client';
 
 export type UserProfile = {
@@ -103,7 +104,7 @@ export type ActivityLog = {
     timestamp: string; // ISO string
     user: string;
     action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel' | 'Review';
-    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer' | 'Review';
+    entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer' | 'Review' | 'Checklist';
     entityId: string;
     details: string;
 };
@@ -119,3 +120,14 @@ export type Review = {
     timestamp: string; // ISO string
     status: 'Pending' | 'Approved' | 'Rejected';
 };
+
+export type Document = {
+    id: string;
+    customer: string;
+    type: "Driver's License" | "ID Card (Cédula)" | "Passport" | "Other" | "Rental Agreement" | "Departure Checklist";
+    date: string;
+    fileUrl: string;
+    fileName: string;
+    status: 'Verified' | 'Pending' | 'Rejected' | 'Signed' | 'Generated';
+    reservationId?: string;
+}

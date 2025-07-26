@@ -19,11 +19,11 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 type Document = {
     id: string;
     customer: string;
-    type: string;
+    type: "Driver's License" | "ID Card (Cédula)" | "Passport" | "Other" | "Rental Agreement" | "Departure Checklist";
     date: string;
     fileUrl: string;
     fileName: string;
-    status: 'Verified' | 'Pending' | 'Rejected' | 'Signed';
+    status: 'Verified' | 'Pending' | 'Rejected' | 'Signed' | 'Generated';
     reservationId?: string;
 }
 
@@ -31,7 +31,7 @@ type NewDocument = Omit<Document, 'id' | 'date' | 'fileUrl' | 'fileName' | 'stat
     file: File | null;
 }
 
-const emptyDocument: NewDocument = {
+const emptyDocument: Omit<NewDocument, 'type'> & { type: "Driver's License" | "ID Card (Cédula)" | "Passport" | "Other" } = {
     customer: '',
     type: "Driver's License",
     file: null,
@@ -41,7 +41,7 @@ const emptyDocument: NewDocument = {
 export default function DocumentsPage() {
     const { db, storage } = useAuth();
     const [documents, setDocuments] = React.useState<Document[]>([]);
-    const [newDocument, setNewDocument] = React.useState<NewDocument>(emptyDocument);
+    const [newDocument, setNewDocument] = React.useState(emptyDocument);
     const { toast } = useToast();
     const [loading, setLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -71,7 +71,7 @@ export default function DocumentsPage() {
     }
     
     const handleSelectChange = (value: string) => {
-        setNewDocument(prev => ({...prev, type: value}));
+        setNewDocument(prev => ({...prev, type: value as any}));
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,12 +125,11 @@ export default function DocumentsPage() {
         }
     }
 
-    const handleDelete = async (docId: string, type: string) => {
+    const handleDelete = async (docId: string) => {
         if(!db) return;
-        const collectionName = type === 'Rental Agreement' ? 'contracts' : 'documents';
         
         try {
-            await deleteDoc(doc(db, collectionName, docId));
+            await deleteDoc(doc(db, 'documents', docId));
             toast({
                 title: "Document deleted",
                 description: "The document has been removed from the list.",
@@ -141,10 +140,11 @@ export default function DocumentsPage() {
         }
     }
     
-     const getStatusVariant = (status: string) => {
+     const getStatusVariant = (status: Document['status']) => {
         switch (status) {
             case 'Verified':
             case 'Signed':
+            case 'Generated':
                 return 'default';
             case 'Pending':
                 return 'secondary';
@@ -155,8 +155,8 @@ export default function DocumentsPage() {
         }
     };
 
-    const getStatusClass = (status: string) => {
-        if (status === 'Verified' || status === 'Signed') return 'bg-green-600 hover:bg-green-700';
+    const getStatusClass = (status: Document['status']) => {
+        if (status === 'Verified' || status === 'Signed' || status === 'Generated') return 'bg-green-600 hover:bg-green-700';
         return '';
     };
 
@@ -227,7 +227,7 @@ export default function DocumentsPage() {
                                         <TableCell className="font-medium">{doc.customer}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                {doc.type === 'Rental Agreement' && <FileText className="h-4 w-4 text-muted-foreground" />}
+                                                {(doc.type === 'Rental Agreement' || doc.type === 'Departure Checklist') && <FileText className="h-4 w-4 text-muted-foreground" />}
                                                 <span>{doc.type}</span>
                                             </div>
                                         </TableCell>
@@ -250,22 +250,22 @@ export default function DocumentsPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                    {doc.type === 'Rental Agreement' && doc.reservationId ? (
+                                                    {(doc.type === 'Rental Agreement' || doc.type === 'Departure Checklist') && doc.reservationId ? (
                                                         <DropdownMenuItem asChild>
                                                           <Link href={`/reservations?view=${doc.reservationId}`} className="flex items-center gap-2 cursor-pointer">
                                                                 <FileText className="h-4 w-4" />
                                                                 View Related Reservation
                                                           </Link>
                                                         </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem className="gap-2" asChild>
-                                                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                                                            <Download className="h-4 w-4" />
-                                                            Download
-                                                          </a>
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuItem className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={() => handleDelete(doc.id, doc.type)}>
+                                                    ) : null }
+                                                    <DropdownMenuItem className="gap-2" asChild>
+                                                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                                        <Download className="h-4 w-4" />
+                                                        Download
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                    
+                                                    <DropdownMenuItem className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={() => handleDelete(doc.id)}>
                                                         <Trash2 className="h-4 w-4" />
                                                         Delete
                                                     </DropdownMenuItem>
