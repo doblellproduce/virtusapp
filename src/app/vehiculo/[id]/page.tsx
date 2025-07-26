@@ -5,6 +5,7 @@ import { getDb } from '@/lib/firebase/server/admin';
 import type { Vehicle } from '@/lib/types';
 import VehicleDetailClient from './vehicle-detail-client';
 
+// Define the type for the component's props
 type VehicleDetailPageProps = {
     params: {
         id: string;
@@ -28,6 +29,7 @@ async function getVehicleData(vehicleId: string): Promise<Vehicle | null> {
     }
 }
 
+// Apply the type directly to the props object
 export default async function VehicleDetailPage({ params }: VehicleDetailPageProps) {
     const vehicle = await getVehicleData(params.id);
 
