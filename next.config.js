@@ -20,6 +20,10 @@ const nextConfig = {
       }
     ],
   },
+  experimental: {
+    // This allows requests from the Firebase Studio development environment, resolving the CORS warning.
+    allowedDevOrigins: ["https://*.cloudworkstations.dev"],
+  }
 };
 
 module.exports = nextConfig;
