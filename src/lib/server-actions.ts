@@ -109,12 +109,12 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         if (err.code === 7 || (err.message && err.message.includes('PERMISSION_DENIED'))) {
              return { 
                 vehicles: [], 
-                error: "Error de Permisos: No se pudo acceder a los datos de los vehículos. Verifique las credenciales del servidor (variables de entorno) en Vercel, ya que el Admin SDK no se está autenticando correctamente."
+                error: "Error de Permisos de Base de Datos: El acceso fue denegado. Por favor, despliegue las reglas de seguridad de Firestore ejecutando 'npm run deploy:rules' en su terminal local."
             };
         }
         return { 
             vehicles: [], 
-            error: "Ocurrió un error inesperado al cargar los vehículos." 
+            error: `Ocurrió un error inesperado al cargar los vehículos: ${err.message}` 
         };
     }
 }

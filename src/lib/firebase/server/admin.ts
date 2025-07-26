@@ -4,54 +4,57 @@ import { getAuth as getAdminAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage as getAdminStorage, Storage } from 'firebase-admin/storage';
 
-let adminApp: App;
+let adminApp: App | null = null;
 
-// Use a singleton pattern to initialize the app only once.
-if (!getApps().length) {
+function initializeAdminApp(): App {
+    // Check if the app is already initialized to avoid re-initialization
+    const existingApp = getApps().find(app => app.name === 'firebase-admin-app');
+    if (existingApp) {
+        return existingApp;
+    }
+
     const privateKey = process.env.FIREBASE_PRIVATE_KEY;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-    // Check if all required environment variables are present.
     if (privateKey && clientEmail && projectId) {
-        adminApp = initializeApp({
-            credential: cert({
+        try {
+            const serviceAccount = {
                 projectId,
                 clientEmail,
-                privateKey: privateKey.replace(/\\n/g, '\n'), // Ensure newlines are correctly formatted.
-            }),
-            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        });
+                privateKey: privateKey.replace(/\\n/g, '\n'),
+            };
+            return initializeApp({
+                credential: cert(serviceAccount),
+                storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+            }, 'firebase-admin-app'); // Name the app to prevent conflicts
+        } catch (error: any) {
+            console.error("Firebase Admin SDK Initialization Error:", error.message);
+            // Throw a more specific error to be caught by server actions
+            throw new Error(`Firebase Admin SDK Initialization Failed: ${error.message}`);
+        }
     } else {
-        // This warning is crucial for debugging in production environments like Vercel.
-        console.warn(
-            "Firebase Admin credentials are not fully set in environment variables. " +
-            "Server-side Firebase functionality will be disabled. " +
-            "Ensure FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set."
-        );
+        // This is a critical configuration error.
+        console.error("Firebase Admin credentials are not fully set in environment variables.");
+        throw new Error("Firebase Admin credentials are not fully set. Ensure FIREBASE_PRIVATE_KEY and FIREBASE_CLIENT_EMAIL are configured in your Vercel project settings.");
     }
-} else {
-    adminApp = getApps()[0];
 }
 
-
-// These functions will now check if the adminApp was successfully initialized.
-// If not, they will throw a clear error, which can be caught by our server actions.
-function getInitializedAdminApp(): App {
+function getAdminApp(): App {
     if (!adminApp) {
-        throw new Error("Firebase Admin SDK is not initialized. Check server logs and Vercel environment variables for credentials.");
+        adminApp = initializeAdminApp();
     }
     return adminApp;
 }
 
 export function getDb(): Firestore {
-    return getFirestore(getInitializedAdminApp());
+    return getFirestore(getAdminApp());
 }
 
 export function getAuth(): Auth {
-    return getAdminAuth(getInitializedAdminApp());
+    return getAdminAuth(getAdminApp());
 }
 
 export function getStorage(): Storage {
-    return getAdminStorage(getInitializedAdminApp());
+    return getAdminStorage(getAdminApp());
 }
