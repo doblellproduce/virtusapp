@@ -4,7 +4,6 @@
 import { subMonths, format, startOfMonth } from 'date-fns';
 import { getDb } from '@/lib/firebase/server/admin';
 import type { Reservation, Vehicle, Invoice } from '@/lib/types';
-import { initialVehicles } from '@/lib/data';
 
 // This function will run on the server to fetch all required data in parallel
 export async function getDashboardData() {
@@ -109,12 +108,13 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         return { vehicles: vehiclesData };
 
     } catch (err: any) {
-        console.error("Error fetching vehicles for homepage:", err.message);
+        const errorMessage = `Could not connect to the database to load the fleet. Please check your Firebase credentials and server configuration. Details: ${err.message}`;
+        console.error("Error fetching vehicles for homepage:", errorMessage);
         // This fallback ensures the page can still render even if the database connection fails.
         // It provides a clear error message that will be displayed on the page.
         return { 
             vehicles: [], 
-            error: `Could not connect to the database to load the fleet. Please check your Firebase credentials and server configuration. Details: ${err.message}` 
+            error: errorMessage
         };
     }
 }
