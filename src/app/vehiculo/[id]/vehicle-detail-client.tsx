@@ -1,17 +1,20 @@
-'use client'; // This component is now a Client Component
-
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import { notFound } from 'next/navigation';
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, Gauge, GitBranch, Car } from 'lucide-react';
 import VehicleBookingForm from './vehicle-booking-form';
 import type { Vehicle } from '@/lib/types';
+import { getVehicleData } from '@/lib/server-actions';
 
-// Dynamic imports with ssr: false are now allowed because this is a Client Component.
+// Dynamic imports are still valid, but since this is now a Server Component,
+// we must ensure any component using client-side features is marked as such.
+// The Carousel itself is a client component, so this works.
 const Carousel = dynamic(() => import('@/components/ui/carousel').then(m => m.Carousel), { ssr: false });
 const CarouselContent = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselContent), { ssr: false });
 const CarouselItem = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselItem), { ssr: false });
@@ -25,8 +28,15 @@ const Logo = () => (
     </div>
 );
 
-// This component now receives the vehicle data as props.
-export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
+// This is now an async Server Component responsible for fetching its own data.
+export default async function VehicleDetailClient({ id }: { id: string }) {
+    const vehicle = await getVehicleData(id);
+
+    // If no vehicle is found for the given ID, render the 404 page.
+    if (!vehicle) {
+        notFound();
+    }
+    
     return (
     <div className="bg-background text-foreground min-h-screen flex flex-col font-sans">
        <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
