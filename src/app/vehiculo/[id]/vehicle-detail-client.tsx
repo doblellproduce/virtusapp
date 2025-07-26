@@ -11,8 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Gauge, GitBranch, Car } from 'lucide-react';
 import VehicleBookingForm from './vehicle-booking-form';
 import type { Vehicle } from '@/lib/types';
+import { getVehicleData } from '@/lib/server-actions';
+import { notFound } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Dynamic imports with ssr: false are now allowed because this is a Client Component.
+// Dynamic imports with ssr: false are allowed because this is a Client Component.
 const Carousel = dynamic(() => import('@/components/ui/carousel').then(m => m.Carousel), { ssr: false });
 const CarouselContent = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselContent), { ssr: false });
 const CarouselItem = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselItem), { ssr: false });
@@ -27,7 +31,77 @@ const Logo = () => (
 );
 
 // This is now a standard Client Component that receives data via props.
-export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
+export default function VehicleDetailClient({ vehicleId }: { vehicleId: string }) {
+    const [vehicle, setVehicle] = React.useState<Vehicle | null>(null);
+    const [loading, setLoading] = React.useState(true);
+    const { toast } = useToast();
+
+    React.useEffect(() => {
+        const fetchVehicle = async () => {
+            setLoading(true);
+            const data = await getVehicleData(vehicleId);
+            if (!data) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Vehículo no encontrado',
+                    description: 'El vehículo que buscas no existe o no está disponible.',
+                });
+                // In a real app, you might redirect here using `useRouter`
+                // For now, we just show a loading state indefinitely or an error message.
+            }
+            setVehicle(data);
+            setLoading(false);
+        };
+        fetchVehicle();
+    }, [vehicleId, toast]);
+    
+    if (loading) {
+       return (
+        <div className="bg-background text-foreground min-h-screen flex flex-col font-sans">
+             <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
+                <div className="container mx-auto flex h-16 items-center px-4">
+                  <Link href="/" className="flex items-center gap-2">
+                    <Logo />
+                  </Link>
+                   <nav className="ml-auto flex items-center gap-2 sm:gap-4">
+                     <Skeleton className="h-9 w-24" />
+                     <Skeleton className="h-9 w-24" />
+                  </nav>
+                </div>
+            </header>
+             <main className="container mx-auto py-12 px-4 flex-grow">
+                <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+                    <div>
+                        <Skeleton className="w-full aspect-video rounded-lg" />
+                    </div>
+                    <div className="space-y-4">
+                        <Skeleton className="h-6 w-24 rounded-md" />
+                        <Skeleton className="h-12 w-3/4 rounded-md" />
+                        <div className="flex items-center gap-6">
+                            <Skeleton className="h-6 w-20 rounded-md" />
+                            <Skeleton className="h-6 w-20 rounded-md" />
+                            <Skeleton className="h-6 w-20 rounded-md" />
+                        </div>
+                        <Skeleton className="w-full h-96 rounded-lg" />
+                    </div>
+                </div>
+            </main>
+        </div>
+       )
+    }
+
+    if (!vehicle) {
+        // This case is handled by the useEffect toast, but as a fallback:
+        return (
+             <div className="flex flex-col items-center justify-center h-screen text-center">
+                <h1 className="text-4xl font-bold text-destructive">Vehículo no encontrado</h1>
+                <p className="mt-4 text-muted-foreground">Lo sentimos, no pudimos encontrar los detalles para este vehículo.</p>
+                <Button asChild className="mt-6">
+                    <Link href="/">Volver a la página principal</Link>
+                </Button>
+            </div>
+        )
+    }
     
     return (
     <div className="bg-background text-foreground min-h-screen flex flex-col font-sans">

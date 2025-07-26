@@ -99,7 +99,6 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
             .get();
         
         if (vehiclesSnapshot.empty) {
-            console.log("No available vehicles found in the database.");
             return { vehicles: [] };
         }
         
