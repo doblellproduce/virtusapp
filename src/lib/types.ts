@@ -111,6 +111,7 @@ export type ActivityLog = {
 export type Review = {
     id: string;
     vehicleId: string;
+    reservationId: string;
     customerId: string;
     customerName: string;
     rating: number;
