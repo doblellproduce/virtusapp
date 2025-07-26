@@ -5,13 +5,6 @@ import { getDb } from '@/lib/firebase/server/admin';
 import type { Vehicle } from '@/lib/types';
 import VehicleDetailClient from './vehicle-detail-client';
 
-// Define the type for the component's props
-type VehicleDetailPageProps = {
-    params: {
-        id: string;
-    };
-};
-
 async function getVehicleData(vehicleId: string): Promise<Vehicle | null> {
     try {
         const db = getDb();
@@ -29,8 +22,9 @@ async function getVehicleData(vehicleId: string): Promise<Vehicle | null> {
     }
 }
 
-// Apply the type directly to the props object
-export default async function VehicleDetailPage({ params }: VehicleDetailPageProps) {
+// NOTE: We are letting Next.js and TypeScript infer the types for `params` here.
+// Explicitly typing it can cause conflicts with Next.js's internal PageProps.
+export default async function VehicleDetailPage({ params }: { params: { id: string } }) {
     const vehicle = await getVehicleData(params.id);
 
     if (!vehicle) {
