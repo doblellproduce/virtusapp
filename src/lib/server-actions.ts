@@ -109,12 +109,11 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
 
     } catch (err: any) {
         console.error("Error fetching vehicles for homepage:", err.message);
-        // Fallback to static data if Firestore fails, ensuring the homepage still loads.
-        // This is a last resort to keep the page online. The root cause should be fixed (credentials, permissions, etc.).
-        
+        // This fallback ensures the page can still render even if the database connection fails.
+        // It provides a clear error message that will be displayed on the page.
         return { 
             vehicles: [], 
-            error: "No se pudo conectar a la base de datos. Por favor, verifique las credenciales del servidor y vuelva a intentarlo." 
+            error: "No se pudo conectar a la base de datos para cargar la flota. Por favor, contacte al administrador del sistema." 
         };
     }
 }
