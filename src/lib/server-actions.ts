@@ -85,7 +85,7 @@ export async function getDashboardData() {
       recentReservations: [],
       recentInvoices: [],
       chartData: [],
-      error: `Error fetching dashboard data on server: ${error.message}`
+      error: `Failed to fetch dashboard data: ${error.message}`
     };
   }
 }
@@ -113,7 +113,7 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         // It provides a clear error message that will be displayed on the page.
         return { 
             vehicles: [], 
-            error: "No se pudo conectar a la base de datos para cargar la flota. Por favor, contacte al administrador del sistema." 
+            error: `Could not connect to the database to load the fleet. Please contact the system administrator. Details: ${err.message}` 
         };
     }
 }
