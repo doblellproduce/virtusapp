@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Car, Gauge, GitBranch, Loader2, LogIn, Users } from 'lucide-react';
+import { Car, Gauge, GitBranch, LogIn, Users } from 'lucide-react';
 import type { Vehicle } from '@/lib/types';
 import { Suspense } from 'react';
 import { getVehiclesForHomePage } from '@/lib/server-actions';
@@ -59,13 +59,15 @@ function VehicleCard({ vehicle, priority }: { vehicle: Vehicle, priority: boolea
 }
 
 async function FleetList() {
+    // This function now safely returns either vehicle data or an error string.
     const { vehicles, error } = await getVehiclesForHomePage();
 
     if (error) {
         return (
             <Card className="bg-destructive/10 border-destructive text-destructive-foreground p-4 text-center col-span-1 md:col-span-2 lg:col-span-3">
-                <p className="font-semibold">Error al Cargar</p>
-                <p>{error}</p>
+                <p className="font-semibold">Error al Cargar la Flota</p>
+                <p className="text-sm">{error}</p>
+                <p className="text-xs mt-2">Por favor, contacte al administrador del sistema.</p>
             </Card>
         );
     }
@@ -106,7 +108,7 @@ export default function HomePage() {
       <main className="flex-grow">
         <section id="fleet-section" className="container mx-auto py-12 px-4">
             <h2 className="text-3xl font-bold text-center mb-8">Nuestra Flota</h2>
-            <div className="grid grid-cols-1 md:col-span-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <Suspense fallback={
                     <>
                         {[...Array(3)].map((_, i) => (
@@ -136,7 +138,7 @@ export default function HomePage() {
 
       <footer id="contact-section" className="border-t bg-muted/50 mt-12">
           <div className="container mx-auto py-6 text-center text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Virtus Car Rental S.R.L. Todos los derechos reservados...
+            © {new Date().getFullYear()} Virtus Car Rental S.R.L. Todos los derechos reservados.
           </div>
       </footer>
     </div>
