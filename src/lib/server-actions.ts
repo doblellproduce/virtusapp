@@ -92,23 +92,32 @@ export async function getDashboardData() {
 
 export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], error?: string }> {
     try {
-        // Bypassing the database call to resolve the persistent PERMISSION_DENIED error.
-        // This loads static data and ensures the homepage always renders correctly.
-        // The root cause is an environment configuration issue (env vars or IAM permissions).
+        const db = getDb();
+        const vehiclesSnapshot = await db.collection('vehicles')
+            .where('status', '==', 'Available')
+            .limit(6)
+            .get();
+        
+        if (vehiclesSnapshot.empty) {
+            return { vehicles: [] };
+        }
+        
+        const vehiclesData = vehiclesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+        
+        return { vehicles: vehiclesData };
+
+    } catch (err: any) {
+        console.error("Error fetching vehicles for homepage:", err.message);
+        // Fallback to static data if Firestore fails, ensuring the homepage still loads.
+        // This is a temporary measure while diagnosing the core permissions issue.
         const vehiclesData = initialVehicles.map((v, i) => ({
             ...v,
             id: `static-vehicle-${i}`
         })) as Vehicle[];
         
-        return { vehicles: vehiclesData };
-
-    } catch (err: any) {
-        console.error("A critical error occurred in getVehiclesForHomePage, even when trying to load static data:", err.message);
         return { 
-            vehicles: [], 
-            error: `Ocurrió un error inesperado al cargar los vehículos.`
+            vehicles: vehiclesData, 
+            error: "Could not connect to the database. Showing available vehicles from cache." 
         };
     }
 }
-
-
