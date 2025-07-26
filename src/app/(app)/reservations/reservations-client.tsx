@@ -270,6 +270,18 @@ export default function ReservationsClient() {
     
     const handleGenerateInvoice = async (reservation: (Reservation | (Omit<Reservation, 'id'> & {id: string})) | null) => {
         if (!db || !reservation?.id || !user) return;
+        
+        const selectedVehicle = vehicles.find(v => v.id === reservation.vehicleId);
+        if (!selectedVehicle) {
+             toast({ variant: 'destructive', title: 'Error', description: 'Could not find vehicle details to calculate total cost.' });
+            return;
+        }
+
+        const pickupDate = new Date(reservation.pickupDate);
+        const dropoffDate = new Date(reservation.dropoffDate);
+        const rentalDays = differenceInCalendarDays(dropoffDate, pickupDate) || 1;
+        const totalCost = rentalDays * selectedVehicle.pricePerDay;
+
         const agentName = user.displayName ?? 'System';
         
         const newInvoiceId = `INV-${reservation.id.replace('RES-', '')}-${Date.now().toString().slice(-4)}`;
@@ -277,7 +289,7 @@ export default function ReservationsClient() {
         const newInvoice = {
             customer: reservation.customerName,
             date: new Date().toISOString().split('T')[0],
-            amount: String(reservation.totalCost?.toFixed(2) || '0.00'),
+            amount: String(totalCost.toFixed(2)),
             status: 'Draft' as const,
             createdBy: agentName,
             paymentMethod: 'N/A' as const,
@@ -618,16 +630,3 @@ export default function ReservationsClient() {
         </div>
     );
 }
-    
-    
-
-
-
-
-
-    
-
-    
-
-
-
