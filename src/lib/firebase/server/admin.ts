@@ -4,88 +4,82 @@ import { getAuth as getAdminAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage as getAdminStorage, Storage } from 'firebase-admin/storage';
 
-let adminApp: App | null = null;
+let adminApp: App | undefined;
 
 function initializeAdminApp(): App {
-    // Check if the app is already initialized to avoid re-initialization
+    if (adminApp) {
+        return adminApp;
+    }
+
+    // Check if the app is already initialized by Firebase's internal mechanism
     const existingApp = getApps().find(app => app.name === 'firebase-admin-app');
     if (existingApp) {
-        return existingApp;
+        adminApp = existingApp;
+        return adminApp;
     }
 
     const privateKey = process.env.FIREBASE_PRIVATE_KEY;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-    if (privateKey && clientEmail && projectId) {
-        try {
-            const serviceAccount = {
-                projectId,
-                clientEmail,
-                // Vercel and other platforms often escape newlines. 
-                // This line ensures the private key is correctly formatted by replacing '\\n' with '\n'.
-                privateKey: privateKey.replace(/\\n/g, '\n'),
-            };
-            return initializeApp({
-                credential: cert(serviceAccount),
-                storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-            }, 'firebase-admin-app'); // Name the app to prevent conflicts
-        } catch (error: any) {
-            // Log a more descriptive error but don't crash the server.
-            console.error("Firebase Admin SDK Initialization Error:", "Could not initialize Firebase Admin SDK. This is likely due to malformed credentials.", error.message);
-            throw new Error(`Admin App initialization failed due to malformed credentials. Details: ${error.message}`);
-        }
-    } 
-    
-    // This is a common case in development or incomplete CI/CD setups.
-    // Warn the developer but don't throw a fatal error.
-    console.warn("Firebase Admin credentials are not fully set in environment variables. Server-side functionality will be disabled.");
-    // Return a dummy app object to prevent downstream crashes
-    throw new Error("Admin App initialization failed because environment variables are not set.");
+    // A single, clear check for all required environment variables.
+    if (!privateKey || !clientEmail || !projectId) {
+        throw new Error(
+            "Firebase Admin credentials are not fully set in environment variables. " +
+            "Please check FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, and NEXT_PUBLIC_FIREBASE_PROJECT_ID."
+        );
+    }
+
+    try {
+        const serviceAccount = {
+            projectId,
+            clientEmail,
+            // Vercel and other platforms often escape newlines. 
+            // This line ensures the private key is correctly formatted by replacing '\\n' with '\n'.
+            privateKey: privateKey.replace(/\\n/g, '\n'),
+        };
+
+        adminApp = initializeApp({
+            credential: cert(serviceAccount),
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        }, 'firebase-admin-app'); // Name the app to prevent conflicts
+
+        return adminApp;
+
+    } catch (error: any) {
+        // This catch block will now primarily handle errors from malformed credentials.
+        console.error("Firebase Admin SDK Initialization Error:", error.message);
+        throw new Error(`Failed to initialize Firebase Admin SDK. This is likely due to malformed credentials. Details: ${error.message}`);
+    }
 }
 
-function getAdminApp(): App {
+// Initialize the app right away to catch any configuration errors on startup.
+try {
+    initializeAdminApp();
+} catch (error) {
+    console.error("CRITICAL: Firebase Admin App could not be initialized.", error);
+    // Depending on the deployment strategy, you might want to handle this differently.
+    // For now, we log it critically. The functions below will fail if `adminApp` is not set.
+}
+
+
+// These getter functions are now simplified. They assume `initializeAdminApp` has been called.
+// If initialization failed, `adminApp` will be undefined, and these will throw a clear error.
+function getInitializedAdminApp(): App {
     if (!adminApp) {
-        try {
-            adminApp = initializeAdminApp();
-        } catch (error) {
-             console.error("Critical: Could not retrieve Firebase Admin App instance.", error);
-             // Re-throw so that calling functions know initialization failed.
-             throw error;
-        }
+        throw new Error("Firebase Admin SDK has not been initialized. Check server startup logs for credential errors.");
     }
     return adminApp;
 }
 
-// Defensive getters: These functions will attempt to get the service, but will fail gracefully
-// if the admin app itself could not be initialized.
-
 export function getDb(): Firestore {
-    try {
-        const app = getAdminApp();
-        return getFirestore(app);
-    } catch (error) {
-        console.error("Failed to get Firestore instance. Admin App might not be initialized.");
-        throw error;
-    }
+    return getFirestore(getInitializedAdminApp());
 }
 
 export function getAuth(): Auth {
-    try {
-        const app = getAdminApp();
-        return getAdminAuth(app);
-    } catch (error) {
-        console.error("Failed to get Auth instance. Admin App might not be initialized.");
-        throw error;
-    }
+    return getAdminAuth(getInitializedAdminApp());
 }
 
 export function getStorage(): Storage {
-    try {
-        const app = getAdminApp();
-        return getAdminStorage(app);
-    } catch (error) {
-        console.error("Failed to get Storage instance. Admin App might not be initialized.");
-        throw error;
-    }
+    return getAdminStorage(getInitializedAdminApp());
 }
