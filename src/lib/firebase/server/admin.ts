@@ -39,7 +39,7 @@ if (!getApps().length) {
 // If not, they will throw a clear error, which can be caught by our server actions.
 function getInitializedAdminApp(): App {
     if (!adminApp) {
-        throw new Error("Firebase Admin SDK is not initialized. Check server logs for credential errors.");
+        throw new Error("Firebase Admin SDK is not initialized. Check server logs and Vercel environment variables for credentials.");
     }
     return adminApp;
 }
