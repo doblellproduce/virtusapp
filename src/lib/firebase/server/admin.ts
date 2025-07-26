@@ -32,7 +32,7 @@ function initializeAdminApp(): App {
         } catch (error: any) {
             // Log a more descriptive error but don't crash the server.
             console.error("Firebase Admin SDK Initialization Error:", "Could not initialize Firebase Admin SDK. This is likely due to malformed credentials.", error.message);
-            throw new Error("Admin App initialization failed due to malformed credentials.");
+            throw new Error(`Admin App initialization failed due to malformed credentials. Details: ${error.message}`);
         }
     } 
     
