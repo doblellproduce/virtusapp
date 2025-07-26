@@ -64,18 +64,19 @@ export default function VehiclesPage() {
         try {
             const response = await fetch('/api/seed', { method: 'POST' });
             if (!response.ok) {
-                throw new Error('Failed to seed database.');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to seed database.');
             }
             toast({
                 title: 'Database Populated!',
                 description: 'The sample data has been added to your database.',
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Seeding error:", error);
             toast({
                 variant: 'destructive',
                 title: 'Seeding Failed',
-                description: 'Could not populate the database. Check console for errors.',
+                description: error.message || 'Could not populate the database. Check console for errors.',
             });
         } finally {
             setIsSeeding(false);
