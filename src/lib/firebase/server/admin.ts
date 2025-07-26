@@ -41,7 +41,6 @@ function initializeAdminApp(): App {
     // If initialization fails or creds are missing, we fall back to a "no-op" or default app state if possible,
     // but in this case, we must acknowledge that server features requiring auth will fail.
     // We throw here to make it clear in logs that the app is misconfigured.
-    // A less strict approach might return a mock/dummy app, but that can hide configuration problems.
     throw new Error("Firebase Admin SDK could not be initialized. Check server logs for details.");
 }
 
