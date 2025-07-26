@@ -16,52 +16,52 @@ import type { Vehicle, Customer, Reservation, Invoice, Expense, MaintenanceLog, 
 // It should be secured or removed after use in a real production environment.
 
 async function seedCollection<T extends { id?: string }>(
+    db: FirebaseFirestore.Firestore,
     collectionName: string,
-    data: Omit<T, 'id'>[] | (T & { id: string })[]
+    data: (Omit<T, 'id'> | (T & { id: string }))[]
 ) {
-    const db = getDb();
     const collectionRef = db.collection(collectionName);
-    const snapshot = await collectionRef.limit(1).get();
-
+    
+    // Clear existing documents in the collection to prevent duplicates
+    const snapshot = await collectionRef.get();
     if (!snapshot.empty) {
-        console.log(`Collection '${collectionName}' already contains data. Skipping seed.`);
-        return { success: true, message: `Skipped: ${collectionName} not empty.` };
+        console.log(`Clearing existing documents from '${collectionName}'...`);
+        const deleteBatch = db.batch();
+        snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
+        await deleteBatch.commit();
+        console.log(`Cleared ${snapshot.size} documents from '${collectionName}'.`);
     }
 
     console.log(`Seeding collection '${collectionName}'...`);
     const batch = db.batch();
-
     let seededCount = 0;
+
     for (const item of data) {
-        // For data with pre-defined IDs
-        if ('id' in item && typeof item.id === 'string') {
-             const docRef = collectionRef.doc(item.id);
-             batch.set(docRef, item);
-        } else { // For data without pre-defined IDs
-            const docRef = collectionRef.doc();
-            batch.set(docRef, item);
-        }
+        const docRef = 'id' in item && typeof item.id === 'string'
+            ? collectionRef.doc(item.id)
+            : collectionRef.doc();
+        
+        batch.set(docRef, item);
         seededCount++;
     }
 
     await batch.commit();
     console.log(`Successfully seeded ${seededCount} documents into '${collectionName}'.`);
-    return { success: true, message: `Seeded ${seededCount} documents into ${collectionName}.` };
 }
-
 
 export async function POST() {
   try {
     console.log("Starting database seed process...");
+    const db = getDb();
 
-    // We pass a copy of the arrays to avoid potential modifications to the original objects
-    await seedCollection<Vehicle>('vehicles', [...initialVehicles]);
-    await seedCollection<Customer>('customers', [...initialCustomers]);
-    await seedCollection<Reservation>('reservations', [...initialReservations]);
-    await seedCollection<Invoice>('invoices', [...initialInvoices]);
-    await seedCollection<Expense>('expenses', [...initialExpenses]);
-    await seedCollection<MaintenanceLog>('maintenanceLogs', [...initialMaintenanceLogs]);
-    await seedCollection<Review>('reviews', [...initialReviews]);
+    // The seedCollection function now handles clearing before seeding.
+    await seedCollection<Vehicle>(db, 'vehicles', [...initialVehicles]);
+    await seedCollection<Customer>(db, 'customers', [...initialCustomers]);
+    await seedCollection<Reservation>(db, 'reservations', [...initialReservations]);
+    await seedCollection<Invoice>(db, 'invoices', [...initialInvoices]);
+    await seedCollection<Expense>(db, 'expenses', [...initialExpenses]);
+    await seedCollection<MaintenanceLog>(db, 'maintenanceLogs', [...initialMaintenanceLogs]);
+    await seedCollection<Review>(db, 'reviews', [...initialReviews]);
     
     return NextResponse.json({ success: true, message: 'Database seeded successfully!' });
   } catch (error: any) {

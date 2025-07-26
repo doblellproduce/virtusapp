@@ -239,10 +239,10 @@ export default function VehiclesPage() {
                          <div className="flex justify-center items-center h-48">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                          </div>
-                    ) : vehicles.length === 0 ? (
+                    ) : vehicles.length < 5 ? (
                         <div className="text-center py-10">
-                            <h3 className="text-lg font-semibold">Database is Empty</h3>
-                            <p className="text-muted-foreground mt-2">To get started, populate the database with sample data.</p>
+                            <h3 className="text-lg font-semibold">Database is Incomplete</h3>
+                            <p className="text-muted-foreground mt-2">To get started, populate the database with complete sample data.</p>
                             <Button onClick={handleSeedDatabase} className="mt-4" disabled={isSeeding}>
                                 {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
                                 Populate Database
