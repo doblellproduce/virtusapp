@@ -48,8 +48,8 @@ export const initialMaintenanceLogs: MaintenanceLog[] = [
 
 // --- REVIEWS ---
 export const initialReviews: Review[] = [
-    { id: 'REV-001', vehicleId: 'VEH-001', customerId: 'CUST-001', customerName: 'Liam Johnson', rating: 5, comment: 'Excellent car, very clean and economical. The service was top-notch!', timestamp: new Date().toISOString(), status: 'Approved'},
-    { id: 'REV-002', vehicleId: 'VEH-002', customerId: 'CUST-002', customerName: 'Olivia Smith', rating: 4, comment: 'Good vehicle, but pickup took a little longer than expected. Overall a positive experience.', timestamp: new Date().toISOString(), status: 'Pending'},
+    { id: 'REV-001', vehicleId: 'VEH-001', reservationId: 'RES-001', customerId: 'CUST-001', customerName: 'Liam Johnson', rating: 5, comment: 'Excellent car, very clean and economical. The service was top-notch!', timestamp: new Date().toISOString(), status: 'Approved'},
+    { id: 'REV-002', vehicleId: 'VEH-002', reservationId: 'RES-002', customerId: 'CUST-002', customerName: 'Olivia Smith', rating: 4, comment: 'Good vehicle, but pickup took a little longer than expected. Overall a positive experience.', timestamp: new Date().toISOString(), status: 'Pending'},
 ];
 
 

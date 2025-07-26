@@ -10,15 +10,15 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const tokenCookie = request.cookies.get('firebaseIdToken');
 
-    const isPublicPage = ['/', '/login', '/vehiculo/'].some(p => pathname.startsWith(p));
-    const isAdminAsset = ['/dashboard', '/calendar', '/customers', '/documents', '/expenses', '/invoices', '/logs', '/maintenance', '/reports', '/reservations', '/reviews', '/smart-reply', '/users', '/vehicles', '/client-dashboard'].some(p => pathname.startsWith(p));
+    const isPublicPage = ['/', '/login'].some(p => pathname.startsWith(p)) || pathname.startsWith('/vehiculo/');
+    const isAdminAsset = !isPublicPage;
 
     // Allow public pages and API routes to be accessed without checks
     if (isPublicPage || pathname.startsWith('/api/')) {
         return NextResponse.next();
     }
     
-    // If the path is an admin/protected route, check for a token
+    // If the path is a protected route, check for a token
     if (isAdminAsset) {
       if (!tokenCookie?.value) {
           console.log(`No token found for protected route: ${pathname}. Redirecting to login.`);

@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth, getDb } from '@/lib/firebase/server/admin';
 import type { Reservation, Review } from '@/lib/types';
+import { FieldPath } from 'firebase-admin/firestore';
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,12 +20,12 @@ export async function GET(request: NextRequest) {
     const uid = decodedToken.uid;
 
     // 2. Fetch reservations for the logged-in user
-    const reservationsQuery = query(collection(db, 'reservations'), where('customerId', '==', uid), orderBy('pickupDate', 'desc'));
-    const reviewsQuery = query(collection(db, 'reviews'), where('customerId', '==', uid));
+    const reservationsQuery = db.collection('reservations').where('customerId', '==', uid).orderBy('pickupDate', 'desc');
+    const reviewsQuery = db.collection('reviews').where('customerId', '==', uid);
 
     const [reservationsSnapshot, reviewsSnapshot] = await Promise.all([
-        getDocs(reservationsQuery),
-        getDocs(reviewsQuery)
+        reservationsQuery.get(),
+        reviewsQuery.get()
     ]);
     
     const reservations = reservationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
@@ -40,6 +42,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch client data' }, { status: 500 });
   }
 }
-
-// Re-export query and other functions to avoid duplicate imports in consumers
-import { query, collection, where, orderBy, getDocs } from 'firebase/firestore';
