@@ -23,7 +23,7 @@ function initializeAdminApp(): App {
                 projectId,
                 clientEmail,
                 // Vercel and other platforms automatically handle newlines, 
-                // but replacing them explicitly is a robust safeguard.
+                // but replacing them explicitly is a robust safeguard against format issues.
                 privateKey: privateKey.replace(/\\n/g, '\n'),
             };
             return initializeApp({
@@ -32,7 +32,7 @@ function initializeAdminApp(): App {
             }, 'firebase-admin-app'); // Name the app to prevent conflicts
         } catch (error: any) {
             // Log a more descriptive error but don't crash the server.
-            console.error("Firebase Admin SDK Initialization Error:", "Could not initialize Firebase Admin SDK. This is likely due to malformed credentials. Server-side functionality will be limited.", error.message);
+            console.error("Firebase Admin SDK Initialization Error:", "Could not initialize Firebase Admin SDK. This is likely due to malformed credentials.", error.message);
             // We throw here because server functions that depend on this will fail anyway.
             // This makes it clear in the logs that the app is misconfigured.
             throw new Error("Firebase Admin SDK could not be initialized. Check server logs for details.");
