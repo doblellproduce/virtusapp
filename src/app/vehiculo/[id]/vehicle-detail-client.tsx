@@ -1,15 +1,17 @@
+'use client'; // This component is now a Client Component
+
 import * as React from 'react';
-import { notFound } from 'next/navigation';
-import { getVehicleData } from '@/lib/server-actions';
-import VehicleBookingForm from './vehicle-booking-form'; // New component for the interactive part
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Gauge, GitBranch, Car, Globe } from 'lucide-react';
+import { Users, Gauge, GitBranch, Car } from 'lucide-react';
+import VehicleBookingForm from './vehicle-booking-form';
+import type { Vehicle } from '@/lib/types';
 
+// Dynamic imports with ssr: false are now allowed because this is a Client Component.
 const Carousel = dynamic(() => import('@/components/ui/carousel').then(m => m.Carousel), { ssr: false });
 const CarouselContent = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselContent), { ssr: false });
 const CarouselItem = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselItem), { ssr: false });
@@ -23,14 +25,8 @@ const Logo = () => (
     </div>
 );
 
-// This is now a Server Component responsible for fetching data and laying out the page structure.
-export default async function VehicleDetailClient({ vehicleId }: { vehicleId: string }) {
-    const vehicle = await getVehicleData(vehicleId);
-    
-    if (!vehicle) {
-        notFound();
-    }
-
+// This component now receives the vehicle data as props.
+export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle }) {
     return (
     <div className="bg-background text-foreground min-h-screen flex flex-col font-sans">
        <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-sm">
@@ -101,7 +97,6 @@ export default async function VehicleDetailClient({ vehicleId }: { vehicleId: st
                     <div className="flex items-center gap-2"><GitBranch className="h-5 w-5" /><span>{vehicle.specs.transmission}</span></div>
                 </div>
 
-                {/* The interactive form is now its own client component */}
                 <VehicleBookingForm vehicle={vehicle} />
             </div>
         </div>

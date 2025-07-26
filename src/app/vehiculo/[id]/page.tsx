@@ -1,9 +1,16 @@
 import * as React from 'react';
 import VehicleDetailClient from './vehicle-detail-client';
+import { getVehicleData } from '@/lib/server-actions';
+import { notFound } from 'next/navigation';
 
-// NOTE: This page component is now extremely simple.
-// It delegates all logic to the VehicleDetailClient component.
-// This resolves the complex TypeScript issue with async server pages and dynamic params.
-export default function VehicleDetailPage({ params }: { params: { id: string } }) {
-  return <VehicleDetailClient vehicleId={params.id} />;
+// This is the main Server Component for the page.
+// Its only job is to fetch the data on the server and pass it to the client component.
+export default async function VehicleDetailPage({ params }: { params: { id: string } }) {
+  const vehicle = await getVehicleData(params.id);
+
+  if (!vehicle) {
+    notFound();
+  }
+
+  return <VehicleDetailClient vehicle={vehicle} />;
 }
