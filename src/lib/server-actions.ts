@@ -109,14 +109,15 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
     } catch (err: any) {
         console.error("Error fetching vehicles for homepage:", err.message);
         // Fallback to static data if Firestore fails, ensuring the homepage still loads.
-        // This is a temporary measure while diagnosing the core permissions issue.
-        const vehiclesData = initialVehicles.map((v, i) => ({
-            ...v,
-            id: `static-vehicle-${i}`
-        })) as Vehicle[];
+        const fallbackVehicles = initialVehicles
+            .filter(v => v.status === 'Available')
+            .map((v, i) => ({
+                ...v,
+                id: `static-vehicle-${i}`
+            })) as Vehicle[];
         
         return { 
-            vehicles: vehiclesData, 
+            vehicles: fallbackVehicles, 
             error: "Could not connect to the database. Showing available vehicles from cache." 
         };
     }
