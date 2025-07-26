@@ -96,13 +96,27 @@ export default function UsersPage() {
             await logActivity('Update', 'User', editingUser.id, `Updated user profile for ${userData.name}`);
             toast({ title: "User Updated", description: `Details for ${userData.name} have been updated.` });
         } else {
-            // This is a simplified version. A real app would call a Cloud Function
-            // to create the user in Firebase Auth and then add the profile to Firestore.
-            // For now, we'll just add to Firestore.
-            const newUser = { ...userData, photoURL: "" };
-            const newDocRef = await addDoc(collection(db, 'users'), newUser);
-            await logActivity('Create', 'User', newDocRef.id, `Created new user (Firestore only): ${userData.name}`);
-            toast({ title: "User Added (Firestore Only)", description: "User added to database. Auth user needs to be created separately." });
+            // New user creation is now handled by a secure API route
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: userData.email,
+                        displayName: userData.name,
+                        role: userData.role
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to create user.');
+                }
+                toast({ title: "User Created", description: `An invitation will be sent to ${userData.email}.` });
+            } catch (error: any) {
+                console.error("Error creating user:", error);
+                toast({ variant: 'destructive', title: 'Creation Failed', description: error.message });
+            }
         }
         setIsSubmitting(false);
         setOpen(false);
@@ -274,7 +288,7 @@ export default function UsersPage() {
                      <DialogHeader>
                         <DialogTitle>{isEditing ? 'Edit User' : 'Add New User'}</DialogTitle>
                         <DialogDescription>
-                            {isEditing ? 'Update the details for this user.' : 'Fill in the details to add a new user. Note: This only creates a Firestore record.'}
+                            {isEditing ? 'Update the details for this user.' : 'Fill in the details to add a new user.'}
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>

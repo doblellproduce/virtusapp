@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, doc, updateDoc, onSnapshot, addDoc, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, onSnapshot, addDoc, query, orderBy } from 'firebase/firestore';
 import type { Vehicle, MaintenanceLog, Expense } from '@/lib/types';
 
 type NewMaintenanceLog = Omit<MaintenanceLog, 'id' | 'vehicleName' | 'createdBy'>;
@@ -37,39 +37,33 @@ export default function MaintenancePage() {
     const [logData, setLogData] = React.useState<NewMaintenanceLog>(emptyLog);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-    const fetchData = React.useCallback(async () => {
+    React.useEffect(() => {
         if (!db) return;
         setLoading(true);
-        try {
-            // Use onSnapshot for real-time updates on vehicles
-            const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), orderBy('make')), (snapshot) => {
-                const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-                setVehicles(vehiclesData);
-            });
-            
-            const logsSnapshot = await getDocs(query(collection(db, 'maintenanceLogs'), orderBy('date', 'desc')));
-            const logsData = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog));
-            setLogs(logsData);
-
-            return () => unsubVehicles();
-
-        } catch (error) {
-            console.error("Error fetching data: ", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch maintenance data.' });
-        } finally {
+        
+        const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), orderBy('make')), (snapshot) => {
+            const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+            setVehicles(vehiclesData);
+            if(loading) setLoading(false); // Only set loading false once
+        }, (error) => {
+            console.error("Error fetching vehicles:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch vehicles.' });
             setLoading(false);
-        }
-    }, [toast, db]);
+        });
+        
+        const unsubLogs = onSnapshot(query(collection(db, 'maintenanceLogs'), orderBy('date', 'desc')), (snapshot) => {
+            const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog));
+            setLogs(logsData);
+        }, (error) => {
+            console.error("Error fetching logs:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch maintenance logs.' });
+        });
 
-    React.useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-        if(db) {
-            fetchData().then(unsub => {
-                unsubscribe = unsub;
-            });
-        }
-        return () => unsubscribe && unsubscribe();
-    }, [fetchData, db]);
+        return () => {
+            unsubVehicles();
+            unsubLogs();
+        };
+    }, [toast, db]);
 
 
     const handleOpenDialog = () => {

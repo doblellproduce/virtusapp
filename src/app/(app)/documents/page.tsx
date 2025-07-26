@@ -50,54 +50,18 @@ export default function DocumentsPage() {
         if (!db) return;
         setLoading(true);
 
-        const manualDocsQuery = query(collection(db, "documents"), orderBy("date", "desc"));
-        const contractsQuery = query(collection(db, "contracts"), orderBy("date", "desc"));
-
-        let manualDocsData: Document[] = [];
-        let contractsData: Document[] = [];
-
-        const updateCombinedDocs = () => {
-            const combined = [...manualDocsData, ...contractsData];
-            const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-            unique.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setDocuments(unique);
-        }
-
-        const unsubDocs = onSnapshot(manualDocsQuery, (docSnapshot) => {
-            manualDocsData = docSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document));
-            updateCombinedDocs();
-            setLoading(false); // Set loading to false after first data set arrives
+        const q = query(collection(db, "documents"), orderBy("date", "desc"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const docsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document));
+            setDocuments(docsData);
+            setLoading(false);
         }, (error) => {
-            console.error("Error fetching manual documents:", error);
+            console.error("Error fetching documents:", error);
             setLoading(false)
         });
 
-        const unsubContracts = onSnapshot(contractsQuery, (contractSnapshot) => {
-            contractsData = contractSnapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    customer: data.customer,
-                    type: data.type,
-                    date: data.date,
-                    fileUrl: '', // Contracts are generated, no direct URL needed for download yet
-                    fileName: data.file.name,
-                    status: data.status,
-                    reservationId: data.reservationId,
-                } as Document;
-            });
-            updateCombinedDocs();
-            setLoading(false); // Set loading to false after first data set arrives
-        }, (error) => {
-            console.error("Error fetching contracts:", error);
-            setLoading(false)
-        });
-
-        // Cleanup function to unsubscribe from both listeners
-        return () => {
-            unsubDocs();
-            unsubContracts();
-        };
+        // Cleanup function to unsubscribe from the listener
+        return () => unsubscribe();
     }, [db]);
 
 
