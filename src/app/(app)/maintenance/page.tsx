@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, Loader2, CheckCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,13 +41,17 @@ export default function MaintenancePage() {
         if (!db) return;
         setLoading(true);
         try {
-            const vehiclesSnapshot = await getDocs(query(collection(db, 'vehicles'), orderBy('make')));
-            const vehiclesData = vehiclesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
-            setVehicles(vehiclesData);
-
+            // Use onSnapshot for real-time updates on vehicles
+            const unsubVehicles = onSnapshot(query(collection(db, 'vehicles'), orderBy('make')), (snapshot) => {
+                const vehiclesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+                setVehicles(vehiclesData);
+            });
+            
             const logsSnapshot = await getDocs(query(collection(db, 'maintenanceLogs'), orderBy('date', 'desc')));
             const logsData = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog));
             setLogs(logsData);
+
+            return () => unsubVehicles();
 
         } catch (error) {
             console.error("Error fetching data: ", error);
@@ -58,8 +62,15 @@ export default function MaintenancePage() {
     }, [toast, db]);
 
     React.useEffect(() => {
-        if(db) fetchData();
+        let unsubscribe: (() => void) | undefined;
+        if(db) {
+            fetchData().then(unsub => {
+                unsubscribe = unsub;
+            });
+        }
+        return () => unsubscribe && unsubscribe();
     }, [fetchData, db]);
+
 
     const handleOpenDialog = () => {
         setLogData(emptyLog);
@@ -126,7 +137,7 @@ export default function MaintenancePage() {
 
             toast({ title: 'Maintenance Logged', description: `Service for ${newLog.vehicleName} has been recorded and status updated.` });
             setOpen(false);
-            fetchData(); // Refresh data after submission
+            // Data will refresh automatically due to onSnapshot
         } catch (error) {
             console.error("Error logging maintenance: ", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to log maintenance record.' });
@@ -140,6 +151,20 @@ export default function MaintenancePage() {
             setLogData(emptyLog);
         }
     }, [open]);
+
+    const handleCompleteMaintenance = async (vehicleId: string) => {
+        if (!db) return;
+        const vehicleRef = doc(db, 'vehicles', vehicleId);
+        try {
+            await updateDoc(vehicleRef, { status: 'Available' });
+            await logActivity('Update', 'Vehicle', vehicleId, 'Status set to Available after maintenance.');
+            toast({ title: 'Maintenance Completed', description: 'Vehicle is now available for rent.' });
+        } catch (error) {
+            console.error('Error completing maintenance:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update vehicle status.' });
+        }
+    };
+
 
     const getStatusForVehicle = (vehicle: Vehicle) => {
         if (!vehicle || !vehicle.lastServiceDate) {
@@ -181,8 +206,10 @@ export default function MaintenancePage() {
                             <TableRow>
                                 <TableHead>Vehicle</TableHead>
                                 <TableHead>Plate</TableHead>
+                                <TableHead>Current Status</TableHead>
                                 <TableHead>Last Service</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>Service Health</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -192,11 +219,22 @@ export default function MaintenancePage() {
                                 <TableRow key={vehicle.id}>
                                     <TableCell className="font-medium">{vehicle.make} {vehicle.model}</TableCell>
                                     <TableCell>{vehicle.plate}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={vehicle.status === 'Maintenance' ? 'destructive' : 'secondary'}>{vehicle.status}</Badge>
+                                    </TableCell>
                                     <TableCell>{vehicle.lastServiceDate || 'N/A'}</TableCell>
                                     <TableCell>
                                         <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-600' : ''}>
                                             {status.text}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        {vehicle.status === 'Maintenance' && (
+                                            <Button size="sm" variant="outline" onClick={() => handleCompleteMaintenance(vehicle.id)}>
+                                                <CheckCircle className="mr-2 h-4 w-4 text-green-600"/>
+                                                Complete Maintenance
+                                            </Button>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             )})}
@@ -252,7 +290,7 @@ export default function MaintenancePage() {
                                     <SelectValue placeholder="Select a vehicle" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {vehicles.map(v => (
+                                    {vehicles.filter(v => v.status === 'Available').map(v => (
                                         <SelectItem key={v.id} value={String(v.id)}>{v.make} {v.model} ({v.plate})</SelectItem>
                                     ))}
                                 </SelectContent>
