@@ -100,14 +100,21 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         return { vehicles: vehiclesData };
     } catch (err: any) {
         console.error("Error in getVehiclesForHomePage:", err.message);
-        // Catch the specific permission error and return a structured error message.
         if (err.code === 7 || err.message.includes('PERMISSION_DENIED')) {
-             return { vehicles: [], error: "Error de Permisos: No se pudo acceder a los datos de los vehículos. Por favor, despliegue las reglas de Firestore usando la Firebase CLI: `firebase deploy --only firestore:rules`." };
+             return { 
+                vehicles: [], 
+                error: "Error de Permisos: No se pudo acceder a los datos de los vehículos. Por favor, despliegue las reglas de Firestore usando la Firebase CLI: `firebase deploy --only firestore:rules`." 
+            };
         }
-        // This will now catch the "Firebase Admin SDK is not initialized" error and show a user-friendly message.
         if (err.message.includes("Firebase Admin SDK is not initialized")) {
-            return { vehicles: [], error: "No se pudo conectar con la base de datos. Verifique las credenciales del servidor en el entorno de producción." };
+            return { 
+                vehicles: [], 
+                error: "Error de Configuración del Servidor: No se pudo conectar con la base de datos. Verifique las credenciales del servidor (variables de entorno) en Vercel." 
+            };
         }
-        return { vehicles: [], error: "Ocurrió un error inesperado al cargar los vehículos." };
+        return { 
+            vehicles: [], 
+            error: "Ocurrió un error inesperado al cargar los vehículos." 
+        };
     }
 }

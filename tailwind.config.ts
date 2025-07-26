@@ -3,9 +3,10 @@ import type {Config} from 'tailwindcss';
 export default {
   darkMode: ['class'],
   content: [
-    './src/pages/**/*.{ts,tsx}',
-    './src/components/**/*.{ts,tsx}',
-    './src/app/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx,js,jsx,mdx}',
+    './src/app/**/*.{ts,tsx,js,jsx,mdx}',
+    './src/pages/**/*.{ts,tsx,js,jsx,mdx}',
+    './src/components/**/*.{ts,tsx,js,jsx,mdx}',
   ],
   theme: {
     container: {
