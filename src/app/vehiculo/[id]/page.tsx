@@ -1,17 +1,9 @@
-
 import * as React from 'react';
-import { notFound } from 'next/navigation';
-import { getVehicleData } from '@/lib/server-actions';
 import VehicleDetailClient from './vehicle-detail-client';
 
-// NOTE: We are letting Next.js and TypeScript infer the types for `params` here.
-// This is the simplest and most robust way to avoid type conflicts with Next.js internals.
-export default async function VehicleDetailPage({ params }: { params: { id: string } }) {
-    const vehicle = await getVehicleData(params.id);
-
-    if (!vehicle) {
-        notFound();
-    }
-
-    return <VehicleDetailClient initialVehicle={vehicle} />;
+// NOTE: This page component is now extremely simple.
+// It delegates all logic to the VehicleDetailClient component.
+// This resolves the complex TypeScript issue with async server pages and dynamic params.
+export default function VehicleDetailPage({ params }: { params: { id: string } }) {
+  return <VehicleDetailClient vehicleId={params.id} />;
 }
