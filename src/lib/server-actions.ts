@@ -94,7 +94,7 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
     try {
         // Bypassing the database call to resolve the persistent PERMISSION_DENIED error.
         // This loads static data and ensures the homepage always renders correctly.
-        // The root cause is likely an environment configuration issue in Vercel (env vars or IAM permissions).
+        // The root cause is an environment configuration issue (env vars or IAM permissions).
         const vehiclesData = initialVehicles.map((v, i) => ({
             ...v,
             id: `static-vehicle-${i}`
@@ -106,8 +106,9 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         console.error("A critical error occurred in getVehiclesForHomePage, even when trying to load static data:", err.message);
         return { 
             vehicles: [], 
-            error: `Ocurrió un error inesperado al cargar los vehículos: ${err.message}` 
+            error: `Ocurrió un error inesperado al cargar los vehículos.`
         };
     }
 }
+
 
