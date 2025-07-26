@@ -1,4 +1,3 @@
-
 // This file is intended for client-side Firebase initialization and exports.
 // It should NOT contain any server-side code, like the Firebase Admin SDK.
 
