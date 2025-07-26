@@ -118,3 +118,21 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
         };
     }
 }
+
+
+export async function getVehicleData(vehicleId: string): Promise<Vehicle | null> {
+    try {
+        const db = getDb();
+        const vehicleRef = db.collection('vehicles').doc(vehicleId);
+        const vehicleSnap = await vehicleRef.get();
+
+        if (vehicleSnap.exists) {
+            return { id: vehicleSnap.id, ...vehicleSnap.data() } as Vehicle;
+        }
+        return null;
+    } catch (error) {
+        console.error("Server-side error fetching vehicle:", error);
+        // In case of a DB connection error on the server, we can treat it as not found.
+        return null;
+    }
+}
