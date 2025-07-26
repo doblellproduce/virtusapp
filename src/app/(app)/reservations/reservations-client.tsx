@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2, Loader2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Search, FileText, FileCheck, Eye, Undo2, Loader2, Info } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -22,6 +22,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { CustomerCombobox } from '@/components/customer-combobox';
 import DepartureInspectionModal from '@/components/departure-inspection-modal';
 import { differenceInCalendarDays } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type NewReservation = Omit<Reservation, 'id' | 'agent' | 'vehicle' | 'departureInspection' | 'returnInspection'>;
 
@@ -410,11 +411,11 @@ export default function ReservationsClient() {
     
     if (loading) {
         return (
-            <div className="flex h-full w-full items-center justify-center">
+             <div className="flex justify-center items-center h-96">
                 <div className="flex flex-col items-center gap-2 text-center">
                     <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                    <p className="text-lg font-semibold">Loading Reservations...</p>
-                    <p className="text-sm text-muted-foreground">Please wait while we fetch the data.</p>
+                    <p className="text-lg font-semibold">Cargando Reservaciones...</p>
+                    <p className="text-sm text-muted-foreground">Por favor espere mientras buscamos los datos.</p>
                 </div>
             </div>
         );
@@ -444,110 +445,118 @@ export default function ReservationsClient() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Reservation ID</TableHead>
-                                <TableHead>Customer</TableHead>
-                                <TableHead>Vehicle</TableHead>
-                                <TableHead>Pickup</TableHead>
-                                <TableHead>Drop-off</TableHead>
-                                <TableHead>Total Cost</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead><span className="sr-only">Actions</span></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredReservations.map((res) => (
-                                <TableRow key={res?.id || Math.random()} className={highlightedRes === res?.id ? 'bg-primary/10 transition-all duration-500' : ''}>
-                                    <TableCell className="font-medium">{res?.id || 'N/A'}</TableCell>
-                                    <TableCell>{res?.customerName || 'N/A'}</TableCell>
-                                    <TableCell>{res?.vehicle || 'N/A'}</TableCell>
-                                    <TableCell>{res?.pickupDate || 'N/A'}</TableCell>
-                                    <TableCell>{res?.dropoffDate || 'N/A'}</TableCell>
-                                    <TableCell>${res?.totalCost?.toFixed(2) || 'N/A'}</TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant={getStatusVariant(res?.status)}
-                                            className={getStatusClass(res?.status)}
-                                        >
-                                            {res?.status || 'Unknown'}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Toggle menu</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                
-                                                {res?.status === 'Upcoming' && (
-                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, 'departure')} disabled={!res || !!res.departureInspection}>
-                                                        <FileCheck className="mr-2 h-4 w-4" />
-                                                        {res.departureInspection ? 'Departure Done' : 'Start Departure'}
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {res?.status === 'Active' && (
-                                                     <DropdownMenuItem onClick={() => handleStartInspection(res, 'return')} disabled={!res || !!res.returnInspection}>
-                                                        <Undo2 className="mr-2 h-4 w-4" />
-                                                         {res.returnInspection ? 'Return Done' : 'Start Return'}
-                                                    </DropdownMenuItem>
-                                                )}
-
-                                                 {(res?.departureInspection || res?.returnInspection) && (
-                                                    <DropdownMenuItem onClick={() => handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        View Inspections
-                                                    </DropdownMenuItem>
-                                                )}
-                                                
-                                                <DropdownMenuSeparator />
-
-                                                <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled'}>
-                                                    <FileText className="mr-2 h-4 w-4" />
-                                                    Generate Invoice
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => res && handleOpenDialog(res)} disabled={!res}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem
-                                                            onSelect={(e) => e.preventDefault()}
-                                                            className="text-destructive focus:text-destructive"
-                                                            disabled={!res || res.status === 'Cancelled' || res.status === 'Completed' || res.status === 'Active'}
-                                                        >
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Cancel Reservation
-                                                        </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This will cancel the reservation for <span className="font-semibold">{res?.customerName}</span> ({res?.id}). This action cannot be undone.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Back</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
-                                                                Yes, Cancel Reservation
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
+                    {filteredReservations.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Reservation ID</TableHead>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Vehicle</TableHead>
+                                    <TableHead>Pickup</TableHead>
+                                    <TableHead>Drop-off</TableHead>
+                                    <TableHead>Total Cost</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead><span className="sr-only">Actions</span></TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredReservations.map((res) => (
+                                    <TableRow key={res?.id || Math.random()} className={highlightedRes === res?.id ? 'bg-primary/10 transition-all duration-500' : ''}>
+                                        <TableCell className="font-medium">{res?.id || 'N/A'}</TableCell>
+                                        <TableCell>{res?.customerName || 'N/A'}</TableCell>
+                                        <TableCell>{res?.vehicle || 'N/A'}</TableCell>
+                                        <TableCell>{res?.pickupDate || 'N/A'}</TableCell>
+                                        <TableCell>{res?.dropoffDate || 'N/A'}</TableCell>
+                                        <TableCell>${res?.totalCost?.toFixed(2) || 'N/A'}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={getStatusVariant(res?.status)}
+                                                className={getStatusClass(res?.status)}
+                                            >
+                                                {res?.status || 'Unknown'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                        <span className="sr-only">Toggle menu</span>
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                    
+                                                    {res?.status === 'Upcoming' && (
+                                                        <DropdownMenuItem onClick={() => handleStartInspection(res, 'departure')} disabled={!res || !!res.departureInspection}>
+                                                            <FileCheck className="mr-2 h-4 w-4" />
+                                                            {res.departureInspection ? 'Departure Done' : 'Start Departure'}
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {res?.status === 'Active' && (
+                                                        <DropdownMenuItem onClick={() => handleStartInspection(res, 'return')} disabled={!res || !!res.returnInspection}>
+                                                            <Undo2 className="mr-2 h-4 w-4" />
+                                                            {res.returnInspection ? 'Return Done' : 'Start Return'}
+                                                        </DropdownMenuItem>
+                                                    )}
+
+                                                    {(res?.departureInspection || res?.returnInspection) && (
+                                                        <DropdownMenuItem onClick={() => handleStartInspection(res, res.returnInspection ? 'return' : 'departure')}>
+                                                            <Eye className="mr-2 h-4 w-4" />
+                                                            View Inspections
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    
+                                                    <DropdownMenuSeparator />
+
+                                                    <DropdownMenuItem onClick={() => handleGenerateInvoice(res)} disabled={!res || res.status === 'Cancelled'}>
+                                                        <FileText className="mr-2 h-4 w-4" />
+                                                        Generate Invoice
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => res && handleOpenDialog(res)} disabled={!res}>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem
+                                                                onSelect={(e) => e.preventDefault()}
+                                                                className="text-destructive focus:text-destructive"
+                                                                disabled={!res || res.status === 'Cancelled' || res.status === 'Completed' || res.status === 'Active'}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Cancel Reservation
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This will cancel the reservation for <span className="font-semibold">{res?.customerName}</span> ({res?.id}). This action cannot be undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Back</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleCancelReservation(res)} className="bg-destructive hover:bg-destructive/90">
+                                                                    Yes, Cancel Reservation
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                         <div className="text-center py-16 text-muted-foreground">
+                            <Info className="mx-auto h-12 w-12" />
+                            <h3 className="mt-4 text-lg font-semibold">No Reservations Found</h3>
+                            <p className="mt-2 text-sm">No reservations match your search criteria. Try a different search or create a new reservation.</p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

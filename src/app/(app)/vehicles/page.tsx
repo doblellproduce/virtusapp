@@ -159,12 +159,14 @@ export default function VehiclesPage() {
                  uploadedImageUrls = await uploadImages();
             }
 
+            const dataAiHint = `${vehicleData.make} ${vehicleData.category}`.toLowerCase();
+
             if (isEditing && editingVehicle) {
                 const vehicleRef = doc(db, 'vehicles', editingVehicle.id);
                 await updateDoc(vehicleRef, { 
                     ...vehicleData,
                     imageUrls: uploadedImageUrls,
-                    dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase()
+                    dataAiHint,
                 });
                 await logActivity('Update', 'Vehicle', editingVehicle.id, `Updated vehicle: ${vehicleData.make} ${vehicleData.model}`);
                 toast({ title: 'Vehicle Updated', description: `${vehicleData.make} ${vehicleData.model} has been updated.` });
@@ -172,7 +174,7 @@ export default function VehiclesPage() {
                 const finalVehicleData = { 
                     ...vehicleData, 
                     imageUrls: uploadedImageUrls,
-                    dataAiHint: `${vehicleData.make} ${vehicleData.category}`.toLowerCase()
+                    dataAiHint,
                 };
                 const newDocRef = await addDoc(collection(db, 'vehicles'), finalVehicleData);
                 await logActivity('Create', 'Vehicle', newDocRef.id, `Created vehicle: ${finalVehicleData.make} ${finalVehicleData.model}`);
@@ -241,13 +243,13 @@ export default function VehiclesPage() {
                          <div className="flex justify-center items-center h-48">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                          </div>
-                    ) : vehicles.length < 5 ? (
+                    ) : vehicles.length === 0 ? (
                         <div className="text-center py-10">
-                            <h3 className="text-lg font-semibold">Database is Incomplete</h3>
-                            <p className="text-muted-foreground mt-2">To get started, populate the database with complete sample data.</p>
+                            <h3 className="text-lg font-semibold">Your Fleet is Empty</h3>
+                            <p className="text-muted-foreground mt-2">Get started by populating the database with sample data or add your first vehicle.</p>
                             <Button onClick={handleSeedDatabase} className="mt-4" disabled={isSeeding}>
                                 {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-                                Populate Database
+                                Populate with Sample Data
                             </Button>
                         </div>
                     ) : (
