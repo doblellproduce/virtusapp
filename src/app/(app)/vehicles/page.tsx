@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Database } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -35,6 +35,7 @@ export default function VehiclesPage() {
     const [loading, setLoading] = React.useState(true);
     const [open, setOpen] = React.useState(false);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [isSeeding, setIsSeeding] = React.useState(false);
     const [editingVehicle, setEditingVehicle] = React.useState<Vehicle | null>(null);
     const [vehicleData, setVehicleData] = React.useState<NewVehicle>(emptyVehicle);
     const [imageFiles, setImageFiles] = React.useState<File[]>([]);
@@ -57,6 +58,30 @@ export default function VehiclesPage() {
 
         return () => unsubscribe();
     }, [db]);
+
+    const handleSeedDatabase = async () => {
+        setIsSeeding(true);
+        try {
+            const response = await fetch('/api/seed', { method: 'POST' });
+            if (!response.ok) {
+                throw new Error('Failed to seed database.');
+            }
+            toast({
+                title: 'Database Populated!',
+                description: 'The sample data has been added to your database.',
+            });
+        } catch (error) {
+            console.error("Seeding error:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Seeding Failed',
+                description: 'Could not populate the database. Check console for errors.',
+            });
+        } finally {
+            setIsSeeding(false);
+        }
+    };
+
 
     const handleOpenDialog = (vehicle: Vehicle | null = null) => {
         if (vehicle) {
@@ -154,8 +179,6 @@ export default function VehiclesPage() {
             setOpen(false);
         } catch (error) {
             console.error("Failed to save vehicle", error);
-            // The toast is now handled in the uploadImages function, so we check if a toast is already displayed
-            // to avoid showing a generic one on top of the specific one.
              toast({
                 variant: "destructive",
                 title: "Save Failed",
@@ -215,6 +238,15 @@ export default function VehiclesPage() {
                          <div className="flex justify-center items-center h-48">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                          </div>
+                    ) : vehicles.length === 0 ? (
+                        <div className="text-center py-10">
+                            <h3 className="text-lg font-semibold">Database is Empty</h3>
+                            <p className="text-muted-foreground mt-2">To get started, populate the database with sample data.</p>
+                            <Button onClick={handleSeedDatabase} className="mt-4" disabled={isSeeding}>
+                                {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
+                                Populate Database
+                            </Button>
+                        </div>
                     ) : (
                     <Table>
                         <TableHeader>
