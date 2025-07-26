@@ -89,27 +89,8 @@ export async function getDashboardData() {
   }
 }
 
-/**
- * This function now returns static vehicle data to ensure the homepage loads without database errors.
- * The original Firestore call is commented out below for future reference once environment issues are resolved.
- */
+
 export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], error?: string }> {
-    try {
-        // Return static data imported from data.ts
-        // This makes the homepage resilient to database connection or permission issues.
-        const vehiclesWithId = initialVehicles.map((v, i) => ({ ...v, id: `static-${i}` }));
-        return { vehicles: vehiclesWithId as Vehicle[] };
-    } catch (err: any) {
-        console.error("Error loading static vehicle data:", err.message);
-        return { 
-            vehicles: [], 
-            error: `Ocurrió un error inesperado al cargar los vehículos: ${err.message}` 
-        };
-    }
-    
-    /*
-    // --- ORIGINAL FIREBASE IMPLEMENTATION ---
-    // This code can be restored once the Firebase Admin SDK and Firestore permissions are correctly configured in Vercel.
     try {
         const db = getDb();
         const vehiclesQuery = db.collection('vehicles').where('status', 'in', ['Available', 'Rented']);
@@ -138,5 +119,4 @@ export async function getVehiclesForHomePage(): Promise<{ vehicles: Vehicle[], e
             error: `Ocurrió un error inesperado al cargar los vehículos: ${err.message}` 
         };
     }
-    */
 }
