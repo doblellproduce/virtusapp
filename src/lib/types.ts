@@ -38,9 +38,7 @@ export type Vehicle = {
         transmission: string;
         engine: string;
     };
-    lastServiceDate: string;
-    reviews?: Review[];
-    averageRating?: number;
+    lastServiceDate: string; // ISO string
 };
 
 export type VehicleInspection = {
@@ -54,16 +52,15 @@ export type VehicleInspection = {
 
 export type Reservation = {
     id: string;
-    customerId: string; // This would now be a customer document ID, not a user UID.
+    customerId: string;
     customerName: string;
     vehicleId: string;
     vehicle: string;
-    pickupDate: string;
-    dropoffDate: string;
-    status: 'Upcoming' | 'Active' | 'Completed' | 'Cancelled' | 'Pending Signature';
+    pickupDate: string; // yyyy-MM-dd
+    dropoffDate: string; // yyyy-MM-dd
+    status: 'Upcoming' | 'Active' | 'Completed' | 'Cancelled';
     agent: string;
     totalCost?: number; 
-    insurance?: any;
     departureInspection?: VehicleInspection;
     returnInspection?: VehicleInspection;
 };
@@ -71,7 +68,7 @@ export type Reservation = {
 export type Invoice = {
   id: string;
   customer: string;
-  date: string;
+  date: string; // yyyy-MM-dd
   amount: string;
   status: 'Paid' | 'Pending' | 'Overdue' | 'Draft';
   createdBy: string;
@@ -84,7 +81,7 @@ export type Expense = {
     description: string;
     category: 'Maintenance' | 'Fuel' | 'Insurance' | 'Salaries' | 'Office Supplies' | 'Utilities' | 'Other';
     amount: string;
-    date: string;
+    date: string; // yyyy-MM-dd
     status: 'Pending' | 'Paid' | 'Overdue';
     createdBy: string;
     vehicleId?: string;
@@ -94,7 +91,7 @@ export type MaintenanceLog = {
     id: string;
     vehicleId: string;
     vehicleName: string;
-    date: string;
+    date: string; // yyyy-MM-dd
     serviceType: string;
     cost: string;
     notes: string;
@@ -103,7 +100,7 @@ export type MaintenanceLog = {
 
 export type ActivityLog = {
     id: string;
-    timestamp: string;
+    timestamp: string; // ISO string
     user: string;
     action: 'Create' | 'Update' | 'Delete' | 'Login' | 'Logout' | 'Cancel' | 'Review';
     entityType: 'Reservation' | 'Vehicle' | 'User' | 'Invoice' | 'Expense' | 'Contract' | 'Auth' | 'Maintenance' | 'Customer' | 'Review';
