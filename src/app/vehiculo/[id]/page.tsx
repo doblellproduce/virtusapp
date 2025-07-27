@@ -1,5 +1,3 @@
-// This is the main page component. It is now a self-contained async Server Component.
-// It fetches data and renders the entire page structure, delegating interactive parts to Client Components.
 
 import * as React from 'react';
 import Link from 'next/link';
@@ -7,15 +5,13 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
-import { getVehicleData } from '@/lib/server-actions';
+import { getVehicleData } from '@/lib/server-actions/vehicle-actions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, Gauge, GitBranch, Car, LogIn } from 'lucide-react';
-import type { Vehicle } from '@/lib/types';
 import VehicleBookingForm from './vehicle-booking-form';
 
-// Dynamic imports for client components. No `ssr: false` as we are in a Server Component.
 const Carousel = dynamic(() => import('@/components/ui/carousel').then(m => m.Carousel));
 const CarouselContent = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselContent));
 const CarouselItem = dynamic(() => import('@/components/ui/carousel').then(m => m.CarouselItem));
