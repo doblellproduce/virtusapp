@@ -120,7 +120,7 @@ export default function VehicleDetailClient({ vehicle }: { vehicle: Vehicle | nu
       
       <footer id="contact-section" className="border-t bg-muted/50 mt-12">
           <div className="container mx-auto py-6 text-center text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Virtus Car Rental S.R.L. All Rights Reserved.
+            © {new Date().getFullYear()} Virtus Car Rental S.R.L. Todos los derechos reservados.
           </div>
       </footer>
       
